@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEM EMEA Activity Dashboard</title>
+<style>
+:root {
+    --bg: #0f0f0f;
+    --surface-0: #1a1a1a;
+    --surface-1: #222;
+    --surface-2: #272727;
+    --border: #333;
+    --text: #e8e8e8;
+    --text-secondary: #999;
+    --green: #1D9E75;
+    --red: #D85A30;
+    --amber: #eda100;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.subtitle { color: var(--text-secondary); font-size: 12px; margin-bottom: 20px; }
+.filter-bar { margin-bottom: 24px; }
+.filter-bar label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px;
+    color: var(--text-secondary); margin-right: 8px;
+}
+.filter-bar select {
+    background: var(--surface-1); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; font-size: 13px; font-family: inherit;
+    cursor: pointer; min-width: 200px; outline: none;
+}
+.filter-bar select:focus { border-color: var(--green); }
+.brand-toggle { display: flex; gap: 0; }
+.brand-btn {
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text-secondary); font-size: 12px; font-family: inherit;
+    padding: 7px 16px; cursor: pointer; transition: all 0.15s;
+}
+.brand-btn:first-child { border-radius: 6px 0 0 6px; }
+.brand-btn:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+.brand-btn.active {
+    border-color: var(--green); color: var(--green);
+    background: rgba(29, 158, 117, 0.12);
+}
+.kpi-block { background: var(--surface-0); border-radius: 12px; padding: 16px; margin-bottom: 24px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpi-card { background: var(--surface-2); border-radius: 8px; padding: 12px; }
+.kpi-label { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.3px; margin-bottom: 4px; }
+.kpi-val { font-size: 22px; font-weight: 600; }
+.kpi-delta { font-size: 11px; margin-top: 2px; }
+.up { color: #4ade80; font-weight: 500; }
+.dn { color: #f87171; font-weight: 500; }
+.neu { color: #888; }
+.table-wrap { border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th {
+    text-align: left; font-size: 10px; text-transform: uppercase; color: var(--text-secondary);
+    padding: 10px 8px; border-bottom: 1px solid var(--border); font-weight: 500;
+    letter-spacing: 0.3px; white-space: nowrap; position: sticky; top: 0; background: var(--surface-0);
+}
+td { padding: 8px 8px; border-bottom: 1px solid #1a1a1a; white-space: nowrap; }
+.tr-alt { background: var(--surface-1); }
+.right { text-align: right; }
+.week-cell { font-weight: 500; color: var(--text); }
+@media (max-width: 900px) {
+    body { padding: 12px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .table-wrap { overflow-x: auto; }
+    h1 { font-size: 17px; }
+}
+@media (max-width: 480px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+    .filter-bar select { width: 100%; }
+}
+.chart-section { background: var(--surface-0); border-radius: 12px; padding: 16px; margin-bottom: 24px; }
+.chart-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.chart-toggle {
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary);
+    font-size: 11px; font-family: inherit; padding: 5px 12px; border-radius: 16px;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.chart-toggle:hover { border-color: #555; color: var(--text); }
+.chart-toggle.active { border-color: var(--green); color: var(--green); background: rgba(29, 158, 117, 0.12); }
+.chart-toggle .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+#chart-canvas { width: 100% !important; max-height: 320px; }
+/* ── Geo Comparison Section ── */
+.section-divider { border: none; border-top: 1px solid var(--border); margin: 40px 0 32px; }
+.comp-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+.comp-header h2 { font-size: 18px; font-weight: 600; }
+.comp-subtitle { color: var(--text-secondary); font-size: 12px; margin-bottom: 16px; }
+.comp-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin-bottom: 20px; }
+.comp-control-group { display: flex; flex-direction: column; gap: 6px; }
+.comp-control-group .ctrl-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); }
+.comp-timeframe { display: flex; gap: 8px; align-items: center; }
+.comp-date-input {
+    background: var(--surface-1); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 10px; font-size: 12px; font-family: inherit; outline: none;
+}
+.comp-date-input:focus { border-color: var(--green); }
+.comp-date-label { font-size: 11px; color: var(--text-secondary); }
+.comp-clusters { display: flex; flex-wrap: wrap; gap: 5px; }
+.cc-pill {
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary);
+    font-size: 11px; font-family: inherit; padding: 4px 10px; border-radius: 14px;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.cc-pill:hover { border-color: #555; color: var(--text); }
+.cc-pill.active { border-color: #6366f1; color: #a5b4fc; background: rgba(99, 102, 241, 0.12); }
+.comp-table-wrap { border: 0.5px solid var(--border); border-radius: 12px; overflow-x: auto; }
+.comp-table-wrap table th { background: var(--surface-0); }
+.comp-table-wrap td.cluster-name { font-weight: 500; color: var(--text); min-width: 140px; }
+.comp-table-wrap th.sortable { cursor: pointer; user-select: none; transition: color 0.15s; }
+.comp-table-wrap th.sortable:hover { color: var(--text); }
+.comp-table-wrap th.sortable.sort-active { color: var(--green); }
+.sort-arrow { font-size: 9px; margin-left: 3px; }
+.select-actions { display: flex; gap: 6px; margin-top: 2px; }
+.select-action {
+    background: none; border: none; color: var(--green); font-size: 10px; font-family: inherit;
+    cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px;
+}
+.select-action:hover { color: #4ade80; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<h1>🌏 SEM EMEA Activity Dashboard</h1>
+<p class="subtitle">Wed–Tue weeks · Search campaigns across 6 accounts · EMEA matched locations</p>
+
+<div class="filter-bar" style="display:flex;flex-wrap:wrap;align-items:center;gap:16px">
+    <div>
+        <label>Type</label>
+        <div class="brand-toggle">
+            <button class="brand-btn active" id="btn-nonbrand" data-type="nonbrand">Non-Brand</button>
+            <button class="brand-btn" id="btn-brand" data-type="brand">Brand</button>
+        </div>
+    </div>
+    <div>
+        <label for="geo-select">Geo</label>
+        <select id="geo-select"></select>
+    </div>
+    <div>
+        <label for="date-from">From</label>
+        <input type="date" id="date-from" style="background:var(--surface-1);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none">
+    </div>
+    <div>
+        <label for="date-to">To</label>
+        <input type="date" id="date-to" style="background:var(--surface-1);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none">
+    </div>
+</div>
+
+<div id="kpi-container" class="kpi-block">
+    <div id="kpi-grid" class="kpi-grid"></div>
+</div>
+
+<div class="chart-section">
+    <div class="chart-toggles" id="chart-toggles"></div>
+    <canvas id="chart-canvas"></canvas>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Week</th>
+                <th class="right">Spend</th>
+                <th class="right">Δ</th>
+                <th class="right">Impressions</th>
+                <th class="right">Δ</th>
+                <th class="right">Signups</th>
+                <th class="right">Δ</th>
+                <th class="right">CPS</th>
+                <th class="right">Δ</th>
+                <th class="right">Agents Created</th>
+                <th class="right">CPAC</th>
+                <th class="right">Δ</th>
+                <th class="right">Payers</th>
+                <th class="right">CAC</th>
+                <th class="right">VBB ROAS</th>
+                <th class="right">Δ</th>
+            </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+    </table>
+</div>
+
+<hr class="section-divider">
+
+<div class="comp-header">
+    <h2>🔍 Geo Comparison</h2>
+</div>
+<p class="comp-subtitle">Aggregated metrics across selected geos for a chosen timeframe</p>
+
+<div class="comp-controls">
+    <div class="comp-control-group">
+        <span class="ctrl-label">Timeframe</span>
+        <div class="comp-timeframe" id="comp-timeframe">
+            <span class="comp-date-label">From</span>
+            <input type="date" id="comp-date-from" class="comp-date-input">
+            <span class="comp-date-label">To</span>
+            <input type="date" id="comp-date-to" class="comp-date-input">
+        </div>
+    </div>
+    <div class="comp-control-group" style="flex:1;min-width:300px">
+        <span class="ctrl-label">Geos</span>
+        <div class="comp-clusters" id="comp-geos"></div>
+        <div class="select-actions">
+            <button class="select-action" id="comp-select-all">Select all</button>
+            <button class="select-action" id="comp-select-none">Clear</button>
+            <button class="select-action" id="comp-select-dach">DACH</button>
+            <button class="select-action" id="comp-select-nordics">Nordics</button>
+            <button class="select-action" id="comp-select-cee">CEE</button>
+            <button class="select-action" id="comp-select-mena">MENA</button>
+            <button class="select-action" id="comp-select-southern">Southern Europe</button>
+            <button class="select-action" id="comp-select-uk">UK & Ireland</button>
+            <button class="select-action" id="comp-select-africa">Africa</button>
+        </div>
+    </div>
+</div>
+
+<div class="comp-table-wrap">
+    <table>
+        <thead>
+            <tr id="comp-thead-row">
+                <th>Geo</th>
+                <th class="right sortable sort-active" data-sort="spend">Spend <span class="sort-arrow">▼</span></th>
+                <th class="right sortable" data-sort="imp">Impressions</th>
+                <th class="right sortable" data-sort="cpc">Avg CPC</th>
+                <th class="right sortable" data-sort="signups">Hard Signups</th>
+                <th class="right sortable" data-sort="cr">CR to SU</th>
+                <th class="right sortable" data-sort="cps">CPS</th>
+                <th class="right sortable" data-sort="agents_created">Agents Created</th>
+                <th class="right sortable" data-sort="cpac">CPAC</th>
+                <th class="right sortable" data-sort="payers">Payers</th>
+                <th class="right sortable" data-sort="cac">CAC</th>
+                <th class="right sortable" data-sort="roas">VBB ROAS</th>
+            </tr>
+        </thead>
+        <tbody id="comp-table-body"></tbody>
+    </table>
+</div>
+
+<script>
+const DATA_BRAND = {"All EMEA":[{"spend":6079.1,"imp":21930,"clicks":4852,"signups":353.5,"payers":38,"vbb_value":105641.06,"agents_created":2.5,"week":"2026-05-27"},{"spend":16087.53,"imp":58534,"clicks":12074,"signups":921.3,"payers":81,"vbb_value":235045.6,"agents_created":31.5,"week":"2026-06-03"},{"spend":18103.51,"imp":57747,"clicks":12303,"signups":918.8,"payers":82,"vbb_value":233364.84,"agents_created":38.5,"week":"2026-06-10"},{"spend":15430.46,"imp":49806,"clicks":10727,"signups":840.5,"payers":90,"vbb_value":196015.05,"agents_created":31.3,"week":"2026-06-17"},{"spend":15615.76,"imp":48380,"clicks":10193,"signups":748.1,"payers":75,"vbb_value":226473.73,"agents_created":40.6,"week":"2026-06-24"},{"spend":14472.09,"imp":49549,"clicks":10786,"signups":866.7,"payers":65,"vbb_value":190090.85,"agents_created":29.5,"week":"2026-07-01"},{"spend":13583.06,"imp":48008,"clicks":9924,"signups":753.2,"payers":48,"vbb_value":220552.62,"agents_created":34.9,"week":"2026-07-08"},{"spend":14348.98,"imp":49856,"clicks":10701,"signups":808.7,"payers":60,"vbb_value":190262.61,"agents_created":39.4,"week":"2026-07-15"},{"spend":13901.35,"imp":51157,"clicks":10650,"signups":698.8,"payers":54,"vbb_value":212439.14,"agents_created":33.4,"week":"2026-07-22"},{"spend":15236.98,"imp":45420,"clicks":10444,"signups":713.8,"payers":54,"vbb_value":199742.73,"agents_created":22.0,"week":"2026-07-29"},{"spend":15321.73,"imp":39820,"clicks":9636,"signups":712.9,"payers":56,"vbb_value":210551.13,"agents_created":38.0,"week":"2026-08-05"},{"spend":14113.32,"imp":30007,"clicks":8463,"signups":580.8,"payers":31,"vbb_value":161278.1,"agents_created":43.2,"week":"2026-08-12"},{"spend":14304.73,"imp":36503,"clicks":10353,"signups":776.9,"payers":13,"vbb_value":77852.45,"agents_created":36.0,"week":"2026-08-19"}],"Australia":[{"spend":4301.41,"imp":9501,"clicks":2883,"signups":180.9,"payers":26,"vbb_value":87689.21,"agents_created":1.5,"week":"2026-05-27"},{"spend":10313.07,"imp":21054,"clicks":6075,"signups":369.2,"payers":49,"vbb_value":154422.33,"agents_created":12.0,"week":"2026-06-03"},{"spend":12655.02,"imp":22981,"clicks":6747,"signups":375.4,"payers":50,"vbb_value":145662.94,"agents_created":16.3,"week":"2026-06-10"},{"spend":10217.95,"imp":18694,"clicks":5633,"signups":324.4,"payers":54,"vbb_value":136016.71,"agents_created":13.9,"week":"2026-06-17"},{"spend":9992.32,"imp":17450,"clicks":5067,"signups":261.6,"payers":57,"vbb_value":152446.74,"agents_created":18.5,"week":"2026-06-24"},{"spend":9699.03,"imp":19330,"clicks":5860,"signups":366.2,"payers":49,"vbb_value":120269.31,"agents_created":8.5,"week":"2026-07-01"},{"spend":9315.41,"imp":18303,"clicks":5363,"signups":317.2,"payers":26,"vbb_value":115366.51,"agents_created":12.7,"week":"2026-07-08"},{"spend":9990.82,"imp":19336,"clicks":5941,"signups":344.8,"payers":35,"vbb_value":140313.6,"agents_created":18.6,"week":"2026-07-15"},{"spend":10173.42,"imp":21394,"clicks":6090,"signups":306.3,"payers":36,"vbb_value":157317.0,"agents_created":11.8,"week":"2026-07-22"},{"spend":11323.97,"imp":19525,"clicks":6023,"signups":331.9,"payers":39,"vbb_value":147752.95,"agents_created":13.0,"week":"2026-07-29"},{"spend":11727.73,"imp":20320,"clicks":6014,"signups":333.7,"payers":39,"vbb_value":152146.01,"agents_created":13.8,"week":"2026-08-05"},{"spend":11626.5,"imp":18625,"clicks":5916,"signups":326.5,"payers":23,"vbb_value":117391.17,"agents_created":24.2,"week":"2026-08-12"},{"spend":10412.44,"imp":19502,"clicks":6159,"signups":339.7,"payers":9,"vbb_value":66812.51,"agents_created":21.0,"week":"2026-08-19"}],"Brunei":[{"spend":0.0,"imp":8,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-05-27"},{"spend":4.62,"imp":46,"clicks":7,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":1.0,"week":"2026-06-03"},{"spend":0.03,"imp":36,"clicks":3,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-10"},{"spend":0.0,"imp":5,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-17"},{"spend":3.72,"imp":18,"clicks":3,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-24"},{"spend":0.6,"imp":14,"clicks":2,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-01"},{"spend":0.4,"imp":19,"clicks":1,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-08"},{"spend":3.59,"imp":23,"clicks":6,"signups":2.0,"payers":0,"vbb_value":40.01,"agents_created":0,"week":"2026-07-15"},{"spend":0.03,"imp":26,"clicks":3,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-22"},{"spend":0.78,"imp":17,"clicks":1,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-29"},{"spend":3.55,"imp":60,"clicks":5,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-05"},{"spend":0.95,"imp":20,"clicks":3,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-12"},{"spend":0.01,"imp":12,"clicks":1,"signups":1.0,"payers":0,"vbb_value":29.89,"agents_created":0,"week":"2026-08-19"}],"China":[{"spend":8.83,"imp":115,"clicks":34,"signups":3.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-05-27"},{"spend":47.4,"imp":312,"clicks":93,"signups":18.7,"payers":0,"vbb_value":1219.16,"agents_created":1.0,"week":"2026-06-03"},{"spend":69.92,"imp":297,"clicks":96,"signups":25.4,"payers":0,"vbb_value":706.41,"agents_created":5.0,"week":"2026-06-10"},{"spend":17.52,"imp":315,"clicks":70,"signups":10.0,"payers":1,"vbb_value":543.76,"agents_created":2.0,"week":"2026-06-17"},{"spend":39.36,"imp":389,"clicks":120,"signups":20.0,"payers":0,"vbb_value":9836.1,"agents_created":3.0,"week":"2026-06-24"},{"spend":15.8,"imp":284,"clicks":66,"signups":17.5,"payers":0,"vbb_value":518.72,"agents_created":1.0,"week":"2026-07-01"},{"spend":23.57,"imp":263,"clicks":69,"signups":11.0,"payers":0,"vbb_value":1450.35,"agents_created":0,"week":"2026-07-08"},{"spend":33.15,"imp":316,"clicks":92,"signups":13.0,"payers":1,"vbb_value":2601.57,"agents_created":0,"week":"2026-07-15"},{"spend":24.39,"imp":306,"clicks":73,"signups":11.0,"payers":0,"vbb_value":179.53,"agents_created":0,"week":"2026-07-22"},{"spend":22.53,"imp":266,"clicks":73,"signups":19.0,"payers":0,"vbb_value":960.23,"agents_created":1.0,"week":"2026-07-29"},{"spend":30.35,"imp":343,"clicks":95,"signups":15.0,"payers":0,"vbb_value":261.54,"agents_created":2.0,"week":"2026-08-05"},{"spend":34.99,"imp":322,"clicks":96,"signups":20.0,"payers":0,"vbb_value":1393.0,"agents_created":1.0,"week":"2026-08-12"},{"spend":32.13,"imp":298,"clicks":84,"signups":13.0,"payers":0,"vbb_value":213.66,"agents_created":3.0,"week":"2026-08-19"}],"Hong Kong":[{"spend":108.8,"imp":670,"clicks":160,"signups":11.4,"payers":1,"vbb_value":636.99,"agents_created":0,"week":"2026-05-27"},{"spend":280.68,"imp":1723,"clicks":346,"signups":26.2,"payers":2,"vbb_value":719.48,"agents_created":1.0,"week":"2026-06-03"},{"spend":222.45,"imp":1536,"clicks":322,"signups":41.8,"payers":3,"vbb_value":9364.27,"agents_created":4.0,"week":"2026-06-10"},{"spend":179.82,"imp":1302,"clicks":247,"signups":25.3,"payers":2,"vbb_value":1396.58,"agents_created":0,"week":"2026-06-17"},{"spend":236.03,"imp":1320,"clicks":278,"signups":27.8,"payers":0,"vbb_value":540.74,"agents_created":2.0,"week":"2026-06-24"},{"spend":228.61,"imp":1187,"clicks":230,"signups":23.3,"payers":1,"vbb_value":10176.15,"agents_created":0,"week":"2026-07-01"},{"spend":199.28,"imp":1184,"clicks":245,"signups":17.7,"payers":0,"vbb_value":780.14,"agents_created":2.0,"week":"2026-07-08"},{"spend":175.68,"imp":1253,"clicks":221,"signups":27.6,"payers":0,"vbb_value":581.18,"agents_created":4.0,"week":"2026-07-15"},{"spend":174.41,"imp":1204,"clicks":248,"signups":25.5,"payers":1,"vbb_value":1767.53,"agents_created":1.0,"week":"2026-07-22"},{"spend":149.02,"imp":1151,"clicks":223,"signups":28.5,"payers":0,"vbb_value":1503.58,"agents_created":2.0,"week":"2026-07-29"},{"spend":142.81,"imp":1040,"clicks":216,"signups":27.0,"payers":1,"vbb_value":2228.97,"agents_created":1.0,"week":"2026-08-05"},{"spend":53.53,"imp":553,"clicks":92,"signups":9.0,"payers":1,"vbb_value":8544.36,"agents_created":2.0,"week":"2026-08-12"},{"spend":96.63,"imp":922,"clicks":191,"signups":19.5,"payers":0,"vbb_value":340.46,"agents_created":2.0,"week":"2026-08-19"}],"India":[{"spend":104.61,"imp":3429,"clicks":201,"signups":10.1,"payers":0,"vbb_value":174.56,"agents_created":0,"week":"2026-05-27"},{"spend":233.12,"imp":8112,"clicks":476,"signups":15.0,"payers":2,"vbb_value":1742.5,"agents_created":3.0,"week":"2026-06-03"},{"spend":185.01,"imp":8096,"clicks":421,"signups":25.9,"payers":0,"vbb_value":1003.23,"agents_created":0,"week":"2026-06-10"},{"spend":205.84,"imp":6601,"clicks":358,"signups":20.0,"payers":0,"vbb_value":927.34,"agents_created":2.0,"week":"2026-06-17"},{"spend":197.58,"imp":6666,"clicks":379,"signups":17.0,"payers":1,"vbb_value":533.49,"agents_created":1.0,"week":"2026-06-24"},{"spend":217.88,"imp":6584,"clicks":384,"signups":20.0,"payers":0,"vbb_value":763.34,"agents_created":1.0,"week":"2026-07-01"},{"spend":201.74,"imp":6875,"clicks":399,"signups":15.5,"payers":0,"vbb_value":659.01,"agents_created":0,"week":"2026-07-08"},{"spend":204.23,"imp":7210,"clicks":401,"signups":17.0,"payers":0,"vbb_value":904.85,"agents_created":1.0,"week":"2026-07-15"},{"spend":183.59,"imp":7385,"clicks":381,"signups":10.0,"payers":0,"vbb_value":326.11,"agents_created":1.0,"week":"2026-07-22"},{"spend":113.43,"imp":5520,"clicks":248,"signups":2.0,"payers":0,"vbb_value":1366.79,"agents_created":0,"week":"2026-07-29"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-05"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-12"},{"spend":41.61,"imp":267,"clicks":55,"signups":7.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-19"}],"Indonesia":[{"spend":27.49,"imp":837,"clicks":27,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-05-27"},{"spend":51.34,"imp":2649,"clicks":79,"signups":3.0,"payers":0,"vbb_value":14.74,"agents_created":0,"week":"2026-06-03"},{"spend":73.96,"imp":2717,"clicks":105,"signups":5.0,"payers":0,"vbb_value":338.26,"agents_created":0,"week":"2026-06-10"},{"spend":81.85,"imp":2581,"clicks":64,"signups":4.0,"payers":1,"vbb_value":345.52,"agents_created":0,"week":"2026-06-17"},{"spend":46.17,"imp":2399,"clicks":65,"signups":6.0,"payers":0,"vbb_value":396.44,"agents_created":1.0,"week":"2026-06-24"},{"spend":76.57,"imp":2158,"clicks":74,"signups":5.0,"payers":0,"vbb_value":618.22,"agents_created":0,"week":"2026-07-01"},{"spend":33.08,"imp":2344,"clicks":59,"signups":4.0,"payers":0,"vbb_value":89.01,"agents_created":0,"week":"2026-07-08"},{"spend":35.68,"imp":2503,"clicks":50,"signups":0,"payers":1,"vbb_value":25.67,"agents_created":1.0,"week":"2026-07-15"},{"spend":47.86,"imp":2044,"clicks":60,"signups":2.0,"payers":0,"vbb_value":44.99,"agents_created":0,"week":"2026-07-22"},{"spend":36.35,"imp":1663,"clicks":39,"signups":1.0,"payers":0,"vbb_value":8.43,"agents_created":0,"week":"2026-07-29"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-05"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-12"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-19"}],"Japan":[{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-05-27"},{"spend":1.81,"imp":5,"clicks":2,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-03"},{"spend":2.07,"imp":5,"clicks":2,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-10"},{"spend":0.0,"imp":1,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-17"},{"spend":0.0,"imp":3,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-24"},{"spend":0.0,"imp":3,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-01"},{"spend":1.59,"imp":5,"clicks":2,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-08"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-15"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-22"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-29"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-05"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-12"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-19"}],"Macau":[{"spend":0.02,"imp":11,"clicks":2,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-05-27"},{"spend":0.92,"imp":48,"clicks":9,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-03"},{"spend":7.96,"imp":44,"clicks":11,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-10"},{"spend":8.81,"imp":30,"clicks":10,"signups":1.0,"payers":0,"vbb_value":149.51,"agents_created":0,"week":"2026-06-17"},{"spend":0.0,"imp":24,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-24"},{"spend":3.93,"imp":24,"clicks":4,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-01"},{"spend":2.42,"imp":29,"clicks":11,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-08"},{"spend":1.53,"imp":35,"clicks":6,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-15"},{"spend":1.54,"imp":24,"clicks":3,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-22"},{"spend":0.92,"imp":28,"clicks":7,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-29"},{"spend":0.0,"imp":26,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-05"},{"spend":0.02,"imp":9,"clicks":2,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-12"},{"spend":0.01,"imp":22,"clicks":1,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-19"}],"Malaysia":[{"spend":59.56,"imp":611,"clicks":129,"signups":12.8,"payers":1,"vbb_value":779.67,"agents_created":0,"week":"2026-05-27"},{"spend":648.25,"imp":3851,"clicks":926,"signups":95.0,"payers":1,"vbb_value":11609.37,"agents_created":2.0,"week":"2026-06-03"},{"spend":568.67,"imp":3288,"clicks":828,"signups":98.7,"payers":2,"vbb_value":6549.32,"agents_created":4.0,"week":"2026-06-10"},{"spend":507.88,"imp":3088,"clicks":800,"signups":91.5,"payers":3,"vbb_value":6200.54,"agents_created":2.0,"week":"2026-06-17"},{"spend":493.48,"imp":2798,"clicks":742,"signups":88.0,"payers":2,"vbb_value":6141.93,"agents_created":3.0,"week":"2026-06-24"},{"spend":383.52,"imp":2827,"clicks":714,"signups":77.0,"payers":3,"vbb_value":16209.59,"agents_created":3.0,"week":"2026-07-01"},{"spend":491.07,"imp":2760,"clicks":710,"signups":69.8,"payers":5,"vbb_value":13980.49,"agents_created":4.2,"week":"2026-07-08"},{"spend":421.98,"imp":2666,"clicks":672,"signups":67.2,"payers":7,"vbb_value":2707.12,"agents_created":4.5,"week":"2026-07-15"},{"spend":272.24,"imp":2630,"clicks":676,"signups":53.7,"payers":1,"vbb_value":3505.01,"agents_created":4.5,"week":"2026-07-22"},{"spend":257.59,"imp":2396,"clicks":639,"signups":45.3,"payers":1,"vbb_value":8763.15,"agents_created":1.0,"week":"2026-07-29"},{"spend":190.3,"imp":2735,"clicks":497,"signups":48.5,"payers":3,"vbb_value":6820.22,"agents_created":7.0,"week":"2026-08-05"},{"spend":157.94,"imp":1570,"clicks":376,"signups":40.4,"payers":1,"vbb_value":1116.61,"agents_created":0,"week":"2026-08-12"},{"spend":258.12,"imp":1781,"clicks":512,"signups":46.5,"payers":1,"vbb_value":1750.46,"agents_created":1.0,"week":"2026-08-19"}],"Myanmar":[{"spend":7.06,"imp":104,"clicks":28,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-05-27"},{"spend":2.15,"imp":191,"clicks":39,"signups":4.0,"payers":1,"vbb_value":161.49,"agents_created":0,"week":"2026-06-03"},{"spend":12.37,"imp":188,"clicks":31,"signups":2.0,"payers":0,"vbb_value":38.73,"agents_created":0,"week":"2026-06-10"},{"spend":8.33,"imp":180,"clicks":40,"signups":3.0,"payers":0,"vbb_value":15.28,"agents_created":0,"week":"2026-06-17"},{"spend":9.86,"imp":180,"clicks":34,"signups":2.0,"payers":0,"vbb_value":269.93,"agents_created":0,"week":"2026-06-24"},{"spend":16.27,"imp":250,"clicks":51,"signups":10.0,"payers":0,"vbb_value":159.07,"agents_created":0,"week":"2026-07-01"},{"spend":19.91,"imp":201,"clicks":49,"signups":4.7,"payers":0,"vbb_value":172.05,"agents_created":1.7,"week":"2026-07-08"},{"spend":6.88,"imp":193,"clicks":46,"signups":3.8,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-15"},{"spend":9.23,"imp":157,"clicks":43,"signups":7.5,"payers":0,"vbb_value":8.83,"agents_created":0,"week":"2026-07-22"},{"spend":13.08,"imp":122,"clicks":32,"signups":9.0,"payers":1,"vbb_value":0,"agents_created":0,"week":"2026-07-29"},{"spend":5.96,"imp":155,"clicks":31,"signups":5.0,"payers":0,"vbb_value":122.17,"agents_created":0,"week":"2026-08-05"},{"spend":8.75,"imp":133,"clicks":39,"signups":2.0,"payers":0,"vbb_value":9.95,"agents_created":0,"week":"2026-08-12"},{"spend":6.69,"imp":106,"clicks":30,"signups":6.5,"payers":0,"vbb_value":10.45,"agents_created":0,"week":"2026-08-19"}],"New Zealand":[{"spend":611.53,"imp":1218,"clicks":392,"signups":18.5,"payers":5,"vbb_value":2791.38,"agents_created":1.0,"week":"2026-05-27"},{"spend":1942.13,"imp":3818,"clicks":1115,"signups":68.9,"payers":11,"vbb_value":23979.66,"agents_created":3.7,"week":"2026-06-03"},{"spend":1653.36,"imp":3157,"clicks":910,"signups":44.5,"payers":11,"vbb_value":7192.26,"agents_created":0,"week":"2026-06-10"},{"spend":1598.83,"imp":2966,"clicks":882,"signups":51.7,"payers":10,"vbb_value":11629.19,"agents_created":4.0,"week":"2026-06-17"},{"spend":1843.91,"imp":3063,"clicks":886,"signups":55.1,"payers":7,"vbb_value":15888.18,"agents_created":2.0,"week":"2026-06-24"},{"spend":1267.42,"imp":2733,"clicks":765,"signups":45.6,"payers":6,"vbb_value":11437.84,"agents_created":2.0,"week":"2026-07-01"},{"spend":1107.15,"imp":2327,"clicks":617,"signups":31.0,"payers":7,"vbb_value":28901.68,"agents_created":1.4,"week":"2026-07-08"},{"spend":1313.13,"imp":2721,"clicks":809,"signups":46.5,"payers":5,"vbb_value":15717.85,"agents_created":2.9,"week":"2026-07-15"},{"spend":1233.04,"imp":2869,"clicks":795,"signups":40.9,"payers":7,"vbb_value":13297.3,"agents_created":2.0,"week":"2026-07-22"},{"spend":1674.48,"imp":3012,"clicks":887,"signups":45.0,"payers":3,"vbb_value":4923.23,"agents_created":0,"week":"2026-07-29"},{"spend":1604.06,"imp":2919,"clicks":855,"signups":60.0,"payers":5,"vbb_value":16083.52,"agents_created":3.0,"week":"2026-08-05"},{"spend":1374.09,"imp":2745,"clicks":805,"signups":43.1,"payers":5,"vbb_value":18689.89,"agents_created":3.0,"week":"2026-08-12"},{"spend":1600.75,"imp":2838,"clicks":870,"signups":48.0,"payers":1,"vbb_value":4173.88,"agents_created":1.0,"week":"2026-08-19"}],"Pacific Islands":[{"spend":5.1,"imp":65,"clicks":17,"signups":2.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-05-27"},{"spend":24.05,"imp":158,"clicks":33,"signups":3.0,"payers":0,"vbb_value":709.89,"agents_created":0,"week":"2026-06-03"},{"spend":16.01,"imp":178,"clicks":36,"signups":3.0,"payers":0,"vbb_value":72.86,"agents_created":0,"week":"2026-06-10"},{"spend":8.81,"imp":130,"clicks":22,"signups":2.0,"payers":2,"vbb_value":768.79,"agents_created":0,"week":"2026-06-17"},{"spend":10.9,"imp":116,"clicks":26,"signups":3.0,"payers":0,"vbb_value":88.36,"agents_created":1.0,"week":"2026-06-24"},{"spend":24.84,"imp":162,"clicks":36,"signups":2.0,"payers":0,"vbb_value":127.11,"agents_created":0,"week":"2026-07-01"},{"spend":32.72,"imp":200,"clicks":42,"signups":5.5,"payers":0,"vbb_value":133.04,"agents_created":0,"week":"2026-07-08"},{"spend":12.39,"imp":128,"clicks":35,"signups":3.5,"payers":0,"vbb_value":145.74,"agents_created":0,"week":"2026-07-15"},{"spend":3.85,"imp":111,"clicks":22,"signups":0,"payers":0,"vbb_value":115.54,"agents_created":1.0,"week":"2026-07-22"},{"spend":20.65,"imp":153,"clicks":37,"signups":4.0,"payers":0,"vbb_value":227.25,"agents_created":0,"week":"2026-07-29"},{"spend":11.56,"imp":150,"clicks":38,"signups":3.0,"payers":0,"vbb_value":37.51,"agents_created":0,"week":"2026-08-05"},{"spend":14.38,"imp":109,"clicks":29,"signups":3.0,"payers":0,"vbb_value":494.42,"agents_created":0,"week":"2026-08-12"},{"spend":4.99,"imp":127,"clicks":34,"signups":1.0,"payers":0,"vbb_value":31.2,"agents_created":0,"week":"2026-08-19"}],"Philippines":[{"spend":40.29,"imp":775,"clicks":83,"signups":2.0,"payers":1,"vbb_value":113.53,"agents_created":0,"week":"2026-05-27"},{"spend":96.64,"imp":2643,"clicks":218,"signups":11.0,"payers":1,"vbb_value":442.06,"agents_created":0,"week":"2026-06-03"},{"spend":130.71,"imp":2704,"clicks":253,"signups":18.0,"payers":0,"vbb_value":1085.22,"agents_created":0,"week":"2026-06-10"},{"spend":104.2,"imp":2326,"clicks":216,"signups":7.0,"payers":0,"vbb_value":465.21,"agents_created":0,"week":"2026-06-17"},{"spend":95.46,"imp":2415,"clicks":210,"signups":11.0,"payers":1,"vbb_value":410.63,"agents_created":0,"week":"2026-06-24"},{"spend":121.88,"imp":2338,"clicks":218,"signups":8.0,"payers":1,"vbb_value":550.26,"agents_created":0,"week":"2026-07-01"},{"spend":112.91,"imp":2445,"clicks":210,"signups":8.0,"payers":0,"vbb_value":1152.46,"agents_created":2.0,"week":"2026-07-08"},{"spend":133.08,"imp":2628,"clicks":272,"signups":11.0,"payers":0,"vbb_value":384.29,"agents_created":0,"week":"2026-07-15"},{"spend":114.73,"imp":2628,"clicks":237,"signups":11.0,"payers":0,"vbb_value":282.48,"agents_created":0,"week":"2026-07-22"},{"spend":60.42,"imp":1621,"clicks":145,"signups":10.0,"payers":0,"vbb_value":279.62,"agents_created":0,"week":"2026-07-29"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-05"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-12"},{"spend":774.79,"imp":2901,"clicks":730,"signups":100.0,"payers":1,"vbb_value":0,"agents_created":2.0,"week":"2026-08-19"}],"Singapore":[{"spend":158.55,"imp":711,"clicks":168,"signups":18.5,"payers":0,"vbb_value":10815.49,"agents_created":0,"week":"2026-05-27"},{"spend":602.6,"imp":2316,"clicks":571,"signups":54.3,"payers":3,"vbb_value":11689.49,"agents_created":5.0,"week":"2026-06-03"},{"spend":559.85,"imp":2304,"clicks":520,"signups":42.6,"payers":7,"vbb_value":10327.58,"agents_created":1.5,"week":"2026-06-10"},{"spend":585.07,"imp":2088,"clicks":538,"signups":58.3,"payers":7,"vbb_value":11669.4,"agents_created":0,"week":"2026-06-17"},{"spend":679.47,"imp":1918,"clicks":465,"signups":48.0,"payers":0,"vbb_value":7310.47,"agents_created":3.5,"week":"2026-06-24"},{"spend":516.23,"imp":1937,"clicks":453,"signups":42.0,"payers":2,"vbb_value":3208.52,"agents_created":7.0,"week":"2026-07-01"},{"spend":459.34,"imp":1587,"clicks":376,"signups":47.2,"payers":3,"vbb_value":17245.08,"agents_created":4.0,"week":"2026-07-08"},{"spend":398.08,"imp":1726,"clicks":400,"signups":45.0,"payers":5,"vbb_value":3761.33,"agents_created":4.7,"week":"2026-07-15"},{"spend":340.12,"imp":1800,"clicks":453,"signups":53.0,"payers":4,"vbb_value":3207.88,"agents_created":3.0,"week":"2026-07-22"},{"spend":249.08,"imp":1537,"clicks":389,"signups":34.5,"payers":2,"vbb_value":15898.33,"agents_created":4.0,"week":"2026-07-29"},{"spend":286.07,"imp":1395,"clicks":320,"signups":45.5,"payers":1,"vbb_value":7205.24,"agents_created":6.0,"week":"2026-08-05"},{"spend":138.39,"imp":919,"clicks":184,"signups":17.5,"payers":0,"vbb_value":719.01,"agents_created":1.0,"week":"2026-08-12"},{"spend":162.32,"imp":1468,"clicks":349,"signups":34.5,"payers":0,"vbb_value":1714.51,"agents_created":1.0,"week":"2026-08-19"}],"South Korea":[{"spend":351.27,"imp":1306,"clicks":259,"signups":28.6,"payers":1,"vbb_value":345.86,"agents_created":0,"week":"2026-05-27"},{"spend":768.43,"imp":3755,"clicks":623,"signups":62.7,"payers":4,"vbb_value":12829.2,"agents_created":2.3,"week":"2026-06-03"},{"spend":889.23,"imp":3395,"clicks":661,"signups":76.0,"payers":3,"vbb_value":41735.63,"agents_created":1.0,"week":"2026-06-10"},{"spend":801.48,"imp":2964,"clicks":613,"signups":72.4,"payers":1,"vbb_value":8690.75,"agents_created":3.5,"week":"2026-06-17"},{"spend":672.28,"imp":2947,"clicks":633,"signups":64.9,"payers":1,"vbb_value":6416.75,"agents_created":0,"week":"2026-06-24"},{"spend":689.41,"imp":2789,"clicks":603,"signups":58.9,"payers":1,"vbb_value":3418.27,"agents_created":0,"week":"2026-07-01"},{"spend":602.2,"imp":3232,"clicks":576,"signups":51.3,"payers":3,"vbb_value":13688.69,"agents_created":3.0,"week":"2026-07-08"},{"spend":563.71,"imp":3066,"clicks":514,"signups":53.3,"payers":0,"vbb_value":12034.55,"agents_created":1.7,"week":"2026-07-15"},{"spend":611.27,"imp":3139,"clicks":540,"signups":47.5,"payers":2,"vbb_value":7744.7,"agents_created":3.3,"week":"2026-07-22"},{"spend":703.49,"imp":3158,"clicks":664,"signups":48.0,"payers":1,"vbb_value":6050.85,"agents_created":1.0,"week":"2026-07-29"},{"spend":719.44,"imp":5346,"clicks":576,"signups":50.1,"payers":2,"vbb_value":15876.21,"agents_created":2.0,"week":"2026-08-05"},{"spend":407.62,"imp":1981,"clicks":348,"signups":32.9,"payers":1,"vbb_value":3692.5,"agents_created":2.0,"week":"2026-08-12"},{"spend":486.72,"imp":2292,"clicks":429,"signups":45.9,"payers":0,"vbb_value":1099.67,"agents_created":3.0,"week":"2026-08-19"}],"Taiwan":[{"spend":126.1,"imp":1024,"clicks":152,"signups":24.3,"payers":0,"vbb_value":606.72,"agents_created":0.0,"week":"2026-05-27"},{"spend":425.1,"imp":2690,"clicks":398,"signups":54.5,"payers":2,"vbb_value":6140.93,"agents_created":0.1,"week":"2026-06-03"},{"spend":346.9,"imp":2224,"clicks":345,"signups":40.5,"payers":3,"vbb_value":941.82,"agents_created":1.2,"week":"2026-06-10"},{"spend":289.77,"imp":1959,"clicks":262,"signups":39.7,"payers":1,"vbb_value":6484.22,"agents_created":1.7,"week":"2026-06-17"},{"spend":453.53,"imp":2125,"clicks":308,"signups":39.8,"payers":1,"vbb_value":3112.32,"agents_created":0,"week":"2026-06-24"},{"spend":409.97,"imp":2331,"clicks":319,"signups":56.2,"payers":2,"vbb_value":12383.17,"agents_created":4.0,"week":"2026-07-01"},{"spend":373.15,"imp":2073,"clicks":328,"signups":49.2,"payers":3,"vbb_value":6726.99,"agents_created":2.0,"week":"2026-07-08"},{"spend":466.39,"imp":2098,"clicks":336,"signups":54.5,"payers":2,"vbb_value":2650.97,"agents_created":1.0,"week":"2026-07-15"},{"spend":356.31,"imp":2122,"clicks":334,"signups":41.2,"payers":2,"vbb_value":7282.5,"agents_created":3.0,"week":"2026-07-22"},{"spend":249.33,"imp":1910,"clicks":280,"signups":43.0,"payers":3,"vbb_value":1853.89,"agents_created":0,"week":"2026-07-29"},{"spend":254.84,"imp":2184,"clicks":252,"signups":28.9,"payers":1,"vbb_value":1029.66,"agents_created":2.0,"week":"2026-08-05"},{"spend":128.47,"imp":1234,"clicks":151,"signups":27.0,"payers":0,"vbb_value":4848.36,"agents_created":1.0,"week":"2026-08-12"},{"spend":189.22,"imp":1346,"clicks":211,"signups":28.0,"payers":0,"vbb_value":849.92,"agents_created":1.0,"week":"2026-08-19"}],"Thailand":[{"spend":159.85,"imp":1335,"clicks":310,"signups":40.3,"payers":3,"vbb_value":1687.64,"agents_created":0,"week":"2026-05-27"},{"spend":601.24,"imp":4637,"clicks":1040,"signups":131.9,"payers":5,"vbb_value":9365.29,"agents_created":0.5,"week":"2026-06-03"},{"spend":678.17,"imp":4115,"clicks":987,"signups":118.9,"payers":3,"vbb_value":8346.31,"agents_created":5.5,"week":"2026-06-10"},{"spend":791.96,"imp":4059,"clicks":939,"signups":127.2,"payers":8,"vbb_value":10316.31,"agents_created":2.2,"week":"2026-06-17"},{"spend":807.45,"imp":3962,"clicks":947,"signups":102.8,"payers":5,"vbb_value":22859.76,"agents_created":4.6,"week":"2026-06-24"},{"spend":777.2,"imp":3984,"clicks":978,"signups":134.0,"payers":0,"vbb_value":10251.26,"agents_created":3.0,"week":"2026-07-01"},{"spend":597.32,"imp":3593,"clicks":847,"signups":119.2,"payers":1,"vbb_value":20175.65,"agents_created":2.0,"week":"2026-07-08"},{"spend":568.62,"imp":3502,"clicks":876,"signups":115.4,"payers":3,"vbb_value":7840.43,"agents_created":0,"week":"2026-07-15"},{"spend":340.41,"imp":2833,"clicks":662,"signups":88.2,"payers":1,"vbb_value":16250.46,"agents_created":1.8,"week":"2026-07-22"},{"spend":357.4,"imp":3059,"clicks":749,"signups":90.5,"payers":4,"vbb_value":10154.43,"agents_created":0,"week":"2026-07-29"},{"spend":345.06,"imp":3147,"clicks":737,"signups":96.2,"payers":4,"vbb_value":8740.09,"agents_created":1.2,"week":"2026-08-05"},{"spend":167.7,"imp":1787,"clicks":422,"signups":59.3,"payers":0,"vbb_value":4378.82,"agents_created":9.0,"week":"2026-08-12"},{"spend":238.3,"imp":2621,"clicks":697,"signups":85.3,"payers":1,"vbb_value":825.84,"agents_created":1.0,"week":"2026-08-19"}],"Vietnam":[{"spend":8.63,"imp":210,"clicks":7,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-05-27"},{"spend":43.97,"imp":526,"clicks":24,"signups":2.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-03"},{"spend":31.83,"imp":482,"clicks":25,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-10"},{"spend":22.35,"imp":517,"clicks":33,"signups":3.0,"payers":0,"vbb_value":395.93,"agents_created":0,"week":"2026-06-17"},{"spend":34.26,"imp":587,"clicks":30,"signups":1.0,"payers":0,"vbb_value":221.9,"agents_created":1.0,"week":"2026-06-24"},{"spend":22.92,"imp":614,"clicks":29,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-01"},{"spend":9.83,"imp":568,"clicks":20,"signups":0,"payers":0,"vbb_value":31.47,"agents_created":0,"week":"2026-07-08"},{"spend":20.04,"imp":452,"clicks":24,"signups":3.0,"payers":1,"vbb_value":553.45,"agents_created":0,"week":"2026-07-15"},{"spend":14.92,"imp":485,"clicks":30,"signups":1.0,"payers":0,"vbb_value":1109.3,"agents_created":1.0,"week":"2026-07-22"},{"spend":4.44,"imp":282,"clicks":8,"signups":1.0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-29"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-05"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-12"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-19"}]};
+const DATA_NONBRAND = {"All EMEA":[{"spend":30068.5,"imp":132431,"clicks":4257,"signups":697.0,"payers":7,"vbb_value":27232.32,"agents_created":1.0,"week":"2026-05-27"},{"spend":81837.91,"imp":375753,"clicks":12418,"signups":2031.3,"payers":15,"vbb_value":83280.52,"agents_created":12.0,"week":"2026-06-03"},{"spend":82984.97,"imp":335662,"clicks":11562,"signups":1929.2,"payers":6,"vbb_value":54971.57,"agents_created":21.0,"week":"2026-06-10"},{"spend":66512.89,"imp":260600,"clicks":9284,"signups":1450.5,"payers":4,"vbb_value":46423.17,"agents_created":20.2,"week":"2026-06-17"},{"spend":61445.72,"imp":258173,"clicks":9070,"signups":1460.5,"payers":6,"vbb_value":64479.09,"agents_created":29.0,"week":"2026-06-24"},{"spend":54465.42,"imp":229121,"clicks":10242,"signups":1862.5,"payers":5,"vbb_value":88472.42,"agents_created":25.2,"week":"2026-07-01"},{"spend":53614.21,"imp":236555,"clicks":11021,"signups":2090.6,"payers":8,"vbb_value":83677.92,"agents_created":31.4,"week":"2026-07-08"},{"spend":69253.99,"imp":291202,"clicks":13501,"signups":2613.5,"payers":6,"vbb_value":64134.16,"agents_created":33.8,"week":"2026-07-15"},{"spend":59416.58,"imp":275200,"clicks":12323,"signups":2276.3,"payers":5,"vbb_value":71879.61,"agents_created":38.4,"week":"2026-07-22"},{"spend":51080.44,"imp":246067,"clicks":9975,"signups":1849.1,"payers":3,"vbb_value":71635.86,"agents_created":34.0,"week":"2026-07-29"},{"spend":76286.55,"imp":285269,"clicks":11983,"signups":2092.7,"payers":8,"vbb_value":58943.69,"agents_created":33.8,"week":"2026-08-05"},{"spend":81333.39,"imp":237244,"clicks":10207,"signups":1892.4,"payers":4,"vbb_value":86401.23,"agents_created":27.0,"week":"2026-08-12"},{"spend":88978.98,"imp":284161,"clicks":11801,"signups":1909.9,"payers":2,"vbb_value":30504.31,"agents_created":29.7,"week":"2026-08-19"}],"Australia":[{"spend":17285.0,"imp":42726,"clicks":1253,"signups":235.3,"payers":5,"vbb_value":12137.83,"agents_created":0,"week":"2026-05-27"},{"spend":40721.47,"imp":99561,"clicks":2744,"signups":519.8,"payers":8,"vbb_value":54105.46,"agents_created":1.0,"week":"2026-06-03"},{"spend":46884.25,"imp":98201,"clicks":2739,"signups":496.7,"payers":2,"vbb_value":32362.28,"agents_created":5.0,"week":"2026-06-10"},{"spend":33365.2,"imp":84180,"clicks":2328,"signups":392.5,"payers":2,"vbb_value":23254.14,"agents_created":5.0,"week":"2026-06-17"},{"spend":28590.91,"imp":82969,"clicks":2313,"signups":410.4,"payers":3,"vbb_value":32936.07,"agents_created":4.0,"week":"2026-06-24"},{"spend":28264.3,"imp":74556,"clicks":2048,"signups":369.1,"payers":2,"vbb_value":45964.05,"agents_created":6.2,"week":"2026-07-01"},{"spend":30380.61,"imp":85532,"clicks":2728,"signups":484.9,"payers":3,"vbb_value":28664.13,"agents_created":7.0,"week":"2026-07-08"},{"spend":43618.27,"imp":111106,"clicks":3855,"signups":726.6,"payers":3,"vbb_value":36769.78,"agents_created":11.8,"week":"2026-07-15"},{"spend":34224.79,"imp":101318,"clicks":3297,"signups":625.8,"payers":2,"vbb_value":44630.56,"agents_created":12.0,"week":"2026-07-22"},{"spend":31123.19,"imp":95027,"clicks":2964,"signups":582.8,"payers":2,"vbb_value":34215.75,"agents_created":17.0,"week":"2026-07-29"},{"spend":52907.42,"imp":128834,"clicks":4544,"signups":777.9,"payers":4,"vbb_value":38458.99,"agents_created":12.0,"week":"2026-08-05"},{"spend":61290.15,"imp":132303,"clicks":4482,"signups":801.8,"payers":2,"vbb_value":52319.8,"agents_created":6.0,"week":"2026-08-12"},{"spend":58908.14,"imp":133697,"clicks":4349,"signups":724.3,"payers":2,"vbb_value":19824.82,"agents_created":10.0,"week":"2026-08-19"}],"Hong Kong":[{"spend":815.06,"imp":5442,"clicks":243,"signups":49.5,"payers":1,"vbb_value":857.27,"agents_created":0,"week":"2026-05-27"},{"spend":1979.17,"imp":14204,"clicks":489,"signups":89.0,"payers":0,"vbb_value":2066.25,"agents_created":0,"week":"2026-06-03"},{"spend":1640.77,"imp":11174,"clicks":437,"signups":68.0,"payers":1,"vbb_value":1650.42,"agents_created":1.0,"week":"2026-06-10"},{"spend":563.64,"imp":3711,"clicks":200,"signups":44.0,"payers":0,"vbb_value":4318.39,"agents_created":0,"week":"2026-06-17"},{"spend":535.63,"imp":4105,"clicks":200,"signups":37.0,"payers":0,"vbb_value":2001.14,"agents_created":2.0,"week":"2026-06-24"},{"spend":722.24,"imp":5018,"clicks":245,"signups":46.8,"payers":0,"vbb_value":812.3,"agents_created":1.0,"week":"2026-07-01"},{"spend":647.7,"imp":5674,"clicks":254,"signups":62.5,"payers":0,"vbb_value":3809.45,"agents_created":1.0,"week":"2026-07-08"},{"spend":653.44,"imp":6602,"clicks":259,"signups":58.0,"payers":0,"vbb_value":1072.74,"agents_created":1.0,"week":"2026-07-15"},{"spend":737.14,"imp":6983,"clicks":293,"signups":72.0,"payers":0,"vbb_value":914.3,"agents_created":1.0,"week":"2026-07-22"},{"spend":686.68,"imp":6621,"clicks":245,"signups":48.0,"payers":1,"vbb_value":2590.56,"agents_created":0,"week":"2026-07-29"},{"spend":670.7,"imp":6646,"clicks":253,"signups":56.0,"payers":1,"vbb_value":925.94,"agents_created":1.0,"week":"2026-08-05"},{"spend":684.58,"imp":4650,"clicks":279,"signups":48.0,"payers":0,"vbb_value":1463.37,"agents_created":1.0,"week":"2026-08-12"},{"spend":746.15,"imp":4717,"clicks":195,"signups":35.5,"payers":0,"vbb_value":777.78,"agents_created":2.0,"week":"2026-08-19"}],"Japan":[{"spend":3629.08,"imp":24514,"clicks":725,"signups":38.4,"payers":0,"vbb_value":10171.99,"agents_created":0,"week":"2026-05-27"},{"spend":9661.53,"imp":59771,"clicks":2018,"signups":90.8,"payers":0,"vbb_value":7001.97,"agents_created":0,"week":"2026-06-03"},{"spend":9136.55,"imp":54438,"clicks":1731,"signups":67.2,"payers":0,"vbb_value":4643.29,"agents_created":1.0,"week":"2026-06-10"},{"spend":17641.74,"imp":76265,"clicks":2125,"signups":71.2,"payers":0,"vbb_value":4821.02,"agents_created":3.0,"week":"2026-06-17"},{"spend":16641.44,"imp":73020,"clicks":1930,"signups":65.2,"payers":0,"vbb_value":10912.67,"agents_created":3.0,"week":"2026-06-24"},{"spend":3017.25,"imp":14160,"clicks":699,"signups":52.0,"payers":2,"vbb_value":4802.39,"agents_created":0,"week":"2026-07-01"},{"spend":3357.9,"imp":23084,"clicks":854,"signups":57.0,"payers":0,"vbb_value":13356.5,"agents_created":2.6,"week":"2026-07-08"},{"spend":4131.2,"imp":25353,"clicks":1005,"signups":59.0,"payers":1,"vbb_value":1549.33,"agents_created":1.3,"week":"2026-07-15"},{"spend":4542.95,"imp":26581,"clicks":1264,"signups":56.0,"payers":2,"vbb_value":5484.2,"agents_created":4.1,"week":"2026-07-22"},{"spend":3497.89,"imp":21301,"clicks":998,"signups":47.0,"payers":0,"vbb_value":14565.27,"agents_created":0,"week":"2026-07-29"},{"spend":1558.87,"imp":9319,"clicks":467,"signups":24.0,"payers":1,"vbb_value":170.83,"agents_created":2.0,"week":"2026-08-05"},{"spend":1029.57,"imp":6196,"clicks":306,"signups":14.0,"payers":0,"vbb_value":316.78,"agents_created":2.0,"week":"2026-08-12"},{"spend":6700.25,"imp":32203,"clicks":1520,"signups":71.0,"payers":0,"vbb_value":203.51,"agents_created":3.0,"week":"2026-08-19"}],"Malaysia":[{"spend":886.29,"imp":6783,"clicks":343,"signups":82.7,"payers":1,"vbb_value":1477.46,"agents_created":0,"week":"2026-05-27"},{"spend":5653.21,"imp":43503,"clicks":2155,"signups":485.0,"payers":2,"vbb_value":6449.61,"agents_created":4.0,"week":"2026-06-03"},{"spend":5305.1,"imp":39064,"clicks":2102,"signups":468.8,"payers":2,"vbb_value":5808.97,"agents_created":7.0,"week":"2026-06-10"},{"spend":4411.31,"imp":32050,"clicks":2051,"signups":482.5,"payers":0,"vbb_value":3564.67,"agents_created":2.0,"week":"2026-06-17"},{"spend":4286.28,"imp":33894,"clicks":2107,"signups":466.0,"payers":1,"vbb_value":4076.71,"agents_created":11.0,"week":"2026-06-24"},{"spend":6972.13,"imp":48516,"clicks":3164,"signups":645.8,"payers":0,"vbb_value":9330.17,"agents_created":3.0,"week":"2026-07-01"},{"spend":5956.17,"imp":43642,"clicks":3190,"signups":716.0,"payers":1,"vbb_value":14581.49,"agents_created":9.3,"week":"2026-07-08"},{"spend":5086.5,"imp":44105,"clicks":3476,"signups":792.1,"payers":1,"vbb_value":9788.76,"agents_created":11.0,"week":"2026-07-15"},{"spend":5110.36,"imp":41421,"clicks":3128,"signups":664.5,"payers":0,"vbb_value":7309.81,"agents_created":6.5,"week":"2026-07-22"},{"spend":3846.0,"imp":35562,"clicks":2355,"signups":505.7,"payers":0,"vbb_value":6291.45,"agents_created":6.0,"week":"2026-07-29"},{"spend":4185.74,"imp":37134,"clicks":2530,"signups":510.5,"payers":0,"vbb_value":12271.39,"agents_created":6.0,"week":"2026-08-05"},{"spend":2645.66,"imp":19325,"clicks":1612,"signups":355.5,"payers":0,"vbb_value":7146.55,"agents_created":6.0,"week":"2026-08-12"},{"spend":2243.43,"imp":12876,"clicks":900,"signups":172.5,"payers":0,"vbb_value":985.62,"agents_created":3.0,"week":"2026-08-19"}],"New Zealand":[{"spend":2826.0,"imp":9889,"clicks":265,"signups":53.0,"payers":0,"vbb_value":716.94,"agents_created":0,"week":"2026-05-27"},{"spend":9902.96,"imp":29215,"clicks":722,"signups":130.4,"payers":2,"vbb_value":3800.44,"agents_created":1.0,"week":"2026-06-03"},{"spend":7544.8,"imp":23723,"clicks":558,"signups":88.0,"payers":0,"vbb_value":4403.44,"agents_created":1.0,"week":"2026-06-10"},{"spend":5558.78,"imp":21541,"clicks":513,"signups":82.5,"payers":0,"vbb_value":3804.82,"agents_created":2.0,"week":"2026-06-17"},{"spend":6327.51,"imp":22907,"clicks":528,"signups":85.5,"payers":0,"vbb_value":4064.67,"agents_created":1.0,"week":"2026-06-24"},{"spend":4727.02,"imp":19236,"clicks":461,"signups":91.3,"payers":0,"vbb_value":4504.56,"agents_created":1.0,"week":"2026-07-01"},{"spend":5303.86,"imp":17845,"clicks":532,"signups":97.8,"payers":1,"vbb_value":3769.07,"agents_created":3.0,"week":"2026-07-08"},{"spend":7805.42,"imp":29056,"clicks":912,"signups":177.2,"payers":1,"vbb_value":4752.63,"agents_created":2.2,"week":"2026-07-15"},{"spend":7512.6,"imp":27447,"clicks":886,"signups":179.5,"payers":1,"vbb_value":5974.29,"agents_created":0.5,"week":"2026-07-22"},{"spend":5919.05,"imp":23989,"clicks":644,"signups":113.4,"payers":0,"vbb_value":4876.05,"agents_created":2.0,"week":"2026-07-29"},{"spend":10146.4,"imp":32360,"clicks":934,"signups":132.9,"payers":1,"vbb_value":2744.47,"agents_created":2.0,"week":"2026-08-05"},{"spend":10292.78,"imp":33698,"clicks":955,"signups":158.4,"payers":0,"vbb_value":3412.88,"agents_created":3.0,"week":"2026-08-12"},{"spend":10326.06,"imp":32648,"clicks":894,"signups":126.0,"payers":0,"vbb_value":1431.34,"agents_created":2.0,"week":"2026-08-19"}],"Pacific Islands":[{"spend":91.87,"imp":346,"clicks":28,"signups":5.0,"payers":0,"vbb_value":46.78,"agents_created":0,"week":"2026-05-27"},{"spend":364.47,"imp":1025,"clicks":101,"signups":18.5,"payers":0,"vbb_value":573.09,"agents_created":0,"week":"2026-06-03"},{"spend":238.92,"imp":994,"clicks":91,"signups":24.0,"payers":0,"vbb_value":82.45,"agents_created":0,"week":"2026-06-10"},{"spend":242.4,"imp":991,"clicks":83,"signups":18.0,"payers":0,"vbb_value":385.7,"agents_created":0,"week":"2026-06-17"},{"spend":183.63,"imp":1019,"clicks":78,"signups":24.0,"payers":0,"vbb_value":141.54,"agents_created":1.0,"week":"2026-06-24"},{"spend":536.82,"imp":1653,"clicks":167,"signups":34.0,"payers":0,"vbb_value":937.99,"agents_created":3.0,"week":"2026-07-01"},{"spend":304.62,"imp":1438,"clicks":150,"signups":24.0,"payers":0,"vbb_value":1134.96,"agents_created":0,"week":"2026-07-08"},{"spend":434.41,"imp":1578,"clicks":192,"signups":43.5,"payers":0,"vbb_value":1011.39,"agents_created":1.0,"week":"2026-07-15"},{"spend":264.0,"imp":1116,"clicks":110,"signups":20.0,"payers":0,"vbb_value":54.83,"agents_created":1.0,"week":"2026-07-22"},{"spend":257.71,"imp":1265,"clicks":139,"signups":27.0,"payers":0,"vbb_value":248.68,"agents_created":0,"week":"2026-07-29"},{"spend":297.03,"imp":1462,"clicks":159,"signups":25.0,"payers":0,"vbb_value":361.07,"agents_created":0,"week":"2026-08-05"},{"spend":178.33,"imp":680,"clicks":95,"signups":23.0,"payers":0,"vbb_value":269.27,"agents_created":0,"week":"2026-08-12"},{"spend":134.33,"imp":417,"clicks":51,"signups":12.0,"payers":0,"vbb_value":262.34,"agents_created":0,"week":"2026-08-19"}],"Philippines":[{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-05-27"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-03"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-10"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-17"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-06-24"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-01"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-08"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-15"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-22"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-07-29"},{"spend":0,"imp":0,"clicks":0,"signups":0,"payers":0,"vbb_value":0,"agents_created":0,"week":"2026-08-05"},{"spend":130.22,"imp":873,"clicks":121,"signups":36.0,"payers":1,"vbb_value":5690.84,"agents_created":2.0,"week":"2026-08-12"},{"spend":3714.99,"imp":22406,"clicks":1969,"signups":459.9,"payers":0,"vbb_value":5285.7,"agents_created":3.7,"week":"2026-08-19"}],"Singapore":[{"spend":570.7,"imp":6638,"clicks":164,"signups":34.0,"payers":0,"vbb_value":445.63,"agents_created":1.0,"week":"2026-05-27"},{"spend":2251.97,"imp":22212,"clicks":553,"signups":106.7,"payers":1,"vbb_value":1442.88,"agents_created":2.0,"week":"2026-06-03"},{"spend":1984.79,"imp":17826,"clicks":482,"signups":101.5,"payers":1,"vbb_value":749.95,"agents_created":1.0,"week":"2026-06-10"},{"spend":875.6,"imp":6516,"clicks":259,"signups":64.0,"payers":0,"vbb_value":707.44,"agents_created":1.0,"week":"2026-06-17"},{"spend":729.94,"imp":6458,"clicks":276,"signups":80.0,"payers":0,"vbb_value":3109.7,"agents_created":4.0,"week":"2026-06-24"},{"spend":1661.24,"imp":10897,"clicks":391,"signups":95.0,"payers":1,"vbb_value":7050.78,"agents_created":4.0,"week":"2026-07-01"},{"spend":1350.17,"imp":11164,"clicks":411,"signups":97.5,"payers":1,"vbb_value":1732.19,"agents_created":3.0,"week":"2026-07-08"},{"spend":1015.61,"imp":12191,"clicks":366,"signups":74.0,"payers":0,"vbb_value":1943.21,"agents_created":1.0,"week":"2026-07-15"},{"spend":1189.76,"imp":12280,"clicks":407,"signups":91.0,"payers":0,"vbb_value":3176.02,"agents_created":2.0,"week":"2026-07-22"},{"spend":1162.92,"imp":10675,"clicks":333,"signups":74.0,"payers":0,"vbb_value":4383.67,"agents_created":2.0,"week":"2026-07-29"},{"spend":1241.48,"imp":10202,"clicks":324,"signups":70.0,"payers":0,"vbb_value":1888.82,"agents_created":0,"week":"2026-08-05"},{"spend":1271.0,"imp":8278,"clicks":392,"signups":69.5,"payers":0,"vbb_value":2021.22,"agents_created":2.0,"week":"2026-08-12"},{"spend":1106.01,"imp":7574,"clicks":221,"signups":52.5,"payers":0,"vbb_value":1023.79,"agents_created":1.0,"week":"2026-08-19"}],"South Korea":[{"spend":1196.27,"imp":12438,"clicks":296,"signups":38.5,"payers":0,"vbb_value":556.94,"agents_created":0,"week":"2026-05-27"},{"spend":2999.77,"imp":30536,"clicks":721,"signups":114.0,"payers":0,"vbb_value":1380.84,"agents_created":1.0,"week":"2026-06-03"},{"spend":2584.11,"imp":23802,"clicks":653,"signups":83.0,"payers":0,"vbb_value":508.58,"agents_created":0,"week":"2026-06-10"},{"spend":361.11,"imp":4085,"clicks":182,"signups":29.5,"payers":0,"vbb_value":426.79,"agents_created":0,"week":"2026-06-17"},{"spend":283.89,"imp":3378,"clicks":137,"signups":16.0,"payers":0,"vbb_value":1633.92,"agents_created":0,"week":"2026-06-24"},{"spend":1174.98,"imp":5702,"clicks":335,"signups":62.4,"payers":0,"vbb_value":841.42,"agents_created":2.0,"week":"2026-07-01"},{"spend":1066.56,"imp":5447,"clicks":344,"signups":63.0,"payers":1,"vbb_value":1243.59,"agents_created":1.5,"week":"2026-07-08"},{"spend":724.53,"imp":9736,"clicks":308,"signups":36.2,"payers":0,"vbb_value":171.2,"agents_created":0.5,"week":"2026-07-15"},{"spend":1051.1,"imp":13656,"clicks":407,"signups":70.9,"payers":0,"vbb_value":1138.89,"agents_created":3.0,"week":"2026-07-22"},{"spend":549.49,"imp":9028,"clicks":198,"signups":40.5,"payers":0,"vbb_value":623.79,"agents_created":1.0,"week":"2026-07-29"},{"spend":584.93,"imp":9442,"clicks":219,"signups":38.5,"payers":0,"vbb_value":126.45,"agents_created":0,"week":"2026-08-05"},{"spend":854.42,"imp":5478,"clicks":295,"signups":36.5,"payers":0,"vbb_value":1336.75,"agents_created":0,"week":"2026-08-12"},{"spend":1405.62,"imp":10201,"clicks":348,"signups":39.0,"payers":0,"vbb_value":97.93,"agents_created":2.0,"week":"2026-08-19"}],"Taiwan":[{"spend":1050.21,"imp":8111,"clicks":257,"signups":52.2,"payers":0,"vbb_value":247.83,"agents_created":0,"week":"2026-05-27"},{"spend":2544.62,"imp":22479,"clicks":621,"signups":95.0,"payers":1,"vbb_value":212.43,"agents_created":0,"week":"2026-06-03"},{"spend":1814.77,"imp":18005,"clicks":470,"signups":97.5,"payers":0,"vbb_value":223.35,"agents_created":2.0,"week":"2026-06-10"},{"spend":599.5,"imp":5764,"clicks":192,"signups":34.5,"payers":2,"vbb_value":203.38,"agents_created":2.0,"week":"2026-06-17"},{"spend":637.73,"imp":5683,"clicks":190,"signups":42.0,"payers":0,"vbb_value":295.42,"agents_created":0,"week":"2026-06-24"},{"spend":1867.71,"imp":11104,"clicks":444,"signups":82.5,"payers":0,"vbb_value":1629.21,"agents_created":3.0,"week":"2026-07-01"},{"spend":1068.26,"imp":7840,"clicks":305,"signups":76.5,"payers":0,"vbb_value":1707.96,"agents_created":2.0,"week":"2026-07-08"},{"spend":1015.26,"imp":10403,"clicks":387,"signups":81.3,"payers":0,"vbb_value":967.33,"agents_created":0,"week":"2026-07-15"},{"spend":1093.71,"imp":12833,"clicks":425,"signups":87.5,"payers":0,"vbb_value":363.95,"agents_created":0,"week":"2026-07-22"},{"spend":829.6,"imp":10799,"clicks":320,"signups":53.0,"payers":0,"vbb_value":466.33,"agents_created":1.0,"week":"2026-07-29"},{"spend":775.88,"imp":11133,"clicks":329,"signups":54.0,"payers":0,"vbb_value":581.93,"agents_created":1.0,"week":"2026-08-05"},{"spend":931.74,"imp":7396,"clicks":413,"signups":78.6,"payers":1,"vbb_value":8017.79,"agents_created":1.0,"week":"2026-08-12"},{"spend":1119.17,"imp":8809,"clicks":339,"signups":58.0,"payers":0,"vbb_value":197.55,"agents_created":1.0,"week":"2026-08-19"}],"Thailand":[{"spend":1718.02,"imp":15544,"clicks":683,"signups":108.5,"payers":0,"vbb_value":573.66,"agents_created":0,"week":"2026-05-27"},{"spend":5758.75,"imp":53247,"clicks":2294,"signups":382.0,"payers":1,"vbb_value":6247.55,"agents_created":3.0,"week":"2026-06-03"},{"spend":5850.91,"imp":48435,"clicks":2299,"signups":434.5,"payers":0,"vbb_value":4538.84,"agents_created":3.0,"week":"2026-06-10"},{"spend":2893.6,"imp":25497,"clicks":1351,"signups":231.8,"payers":0,"vbb_value":4936.81,"agents_created":5.2,"week":"2026-06-17"},{"spend":3228.74,"imp":24740,"clicks":1311,"signups":234.4,"payers":2,"vbb_value":5307.23,"agents_created":3.0,"week":"2026-06-24"},{"spend":5521.72,"imp":38279,"clicks":2288,"signups":383.4,"payers":0,"vbb_value":12599.55,"agents_created":2.0,"week":"2026-07-01"},{"spend":4178.34,"imp":34889,"clicks":2253,"signups":411.3,"payers":1,"vbb_value":13678.57,"agents_created":2.0,"week":"2026-07-08"},{"spend":4769.35,"imp":41072,"clicks":2741,"signups":565.5,"payers":0,"vbb_value":6107.78,"agents_created":4.0,"week":"2026-07-15"},{"spend":3690.17,"imp":31565,"clicks":2106,"signups":409.0,"payers":0,"vbb_value":2832.76,"agents_created":8.2,"week":"2026-07-22"},{"spend":3207.9,"imp":31800,"clicks":1779,"signups":357.7,"payers":0,"vbb_value":3374.31,"agents_created":5.0,"week":"2026-07-29"},{"spend":3918.1,"imp":38737,"clicks":2224,"signups":403.8,"payers":1,"vbb_value":1413.81,"agents_created":9.8,"week":"2026-08-05"},{"spend":2024.95,"imp":18367,"clicks":1257,"signups":271.2,"payers":0,"vbb_value":4405.97,"agents_created":4.0,"week":"2026-08-12"},{"spend":2574.85,"imp":18613,"clicks":1015,"signups":159.2,"payers":0,"vbb_value":413.93,"agents_created":2.0,"week":"2026-08-19"}]};
+
+let currentData = DATA_NONBRAND;
+let currentBrandKey = 'nonbrand';
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function weekLabel(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    let end = new Date(d);
+    end.setDate(end.getDate() + 6);
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0,0,0,0);
+    if (end > yesterday) end = yesterday;
+    const mStart = MONTHS[d.getMonth()];
+    const mEnd = MONTHS[end.getMonth()];
+    if (mStart === mEnd) return mStart + ' ' + d.getDate() + '–' + end.getDate();
+    return mStart + ' ' + d.getDate() + '–' + mEnd + ' ' + end.getDate();
+}
+
+function fmt(n, prefix) {
+    if (n == null || isNaN(n)) return '—';
+    const s = Math.abs(n) >= 1000 ? Math.round(n).toLocaleString('en-US') : n % 1 === 0 ? n.toLocaleString('en-US') : n.toFixed(1);
+    return (prefix || '') + s;
+}
+function fmtMoney(n) { if (n == null || isNaN(n)) return '—'; return '$' + Math.round(n).toLocaleString('en-US'); }
+function fmtRoas(n) { if (n == null || isNaN(n) || !isFinite(n)) return '—'; return (n * 100).toFixed(0) + '%'; }
+
+function delta(cur, prev) {
+    if (!prev || prev === 0) return { pct: null };
+    return { pct: ((cur - prev) / Math.abs(prev)) * 100 };
+}
+function deltaHtml(pct, invert) {
+    if (pct == null) return '<span class="neu">—</span>';
+    const abs = Math.abs(pct).toFixed(1);
+    const isUp = pct > 0;
+    let cls = invert ? (isUp ? 'dn' : 'up') : (isUp ? 'up' : 'dn');
+    if (Math.abs(pct) < 0.05) return '<span class="neu">0.0%</span>';
+    const arrow = isUp ? '▲' : '▼';
+    return `<span class="${cls}">${arrow} ${abs}%</span>`;
+}
+
+function getRows(geo) { return currentData[geo] || []; }
+function getFilteredRows(geo) {
+    let rows = getRows(geo);
+    const fromVal = document.getElementById('date-from').value;
+    const toVal = document.getElementById('date-to').value;
+    if (fromVal) rows = rows.filter(r => r.week >= fromVal);
+    if (toVal) rows = rows.filter(r => r.week <= toVal);
+    return rows;
+}
+
+function render(geo) {
+    const rows = getFilteredRows(geo);
+    if (!rows.length) {
+        document.getElementById('kpi-grid').innerHTML = '<div style="color:#666;padding:12px">No data available</div>';
+        document.getElementById('table-body').innerHTML = '';
+        return;
+    }
+    const last = rows[rows.length - 1];
+    const prev = rows.length > 1 ? rows[rows.length - 2] : null;
+    const lastRoas = last.spend > 0 ? last.vbb_value / last.spend : 0;
+    const prevRoas = prev && prev.spend > 0 ? prev.vbb_value / prev.spend : 0;
+    const kpis = [
+        { label: 'Spend', val: fmtMoney(last.spend), d: delta(last.spend, prev?.spend) },
+        { label: 'Impressions', val: fmt(last.imp), d: delta(last.imp, prev?.imp) },
+        { label: 'Hard Signups', val: fmt(last.signups), d: delta(last.signups, prev?.signups) },
+        { label: 'VBB ROAS', val: fmtRoas(lastRoas), d: delta(lastRoas, prevRoas) },
+    ];
+    document.getElementById('kpi-grid').innerHTML = kpis.map(k => {
+        const dHtml = k.d.pct != null ? deltaHtml(k.d.pct, false) : '<span class="neu">—</span>';
+        return `<div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-delta">${dHtml} vs prior week</div></div>`;
+    }).join('');
+
+    let html = '';
+    rows.forEach((r, i) => {
+        const prev = i > 0 ? rows[i - 1] : null;
+        const roas = r.spend > 0 ? r.vbb_value / r.spend : 0;
+        const prevRoas = prev && prev.spend > 0 ? prev.vbb_value / prev.spend : 0;
+        const cps = r.signups > 0 ? r.spend / r.signups : 0;
+        const prevCps = prev && prev.signups > 0 ? prev.spend / prev.signups : 0;
+        const ac = r.agents_created || 0;
+        const prevAc = prev ? (prev.agents_created || 0) : 0;
+        const cpac = ac > 0 ? r.spend / ac : 0;
+        const prevCpac = prevAc > 0 && prev ? prev.spend / prevAc : 0;
+        const cac = r.payers > 0 ? r.spend / r.payers : 0;
+        const spendD = delta(r.spend, prev?.spend);
+        const impD = delta(r.imp, prev?.imp);
+        const suD = delta(r.signups, prev?.signups);
+        const roasD = delta(roas, prevRoas);
+        const cpsD = delta(cps, prevCps);
+        const cpacD = delta(cpac, prevCpac);
+        const altClass = i % 2 === 1 ? ' class="tr-alt"' : '';
+        html += `<tr${altClass}>
+            <td class="week-cell">${weekLabel(r.week)}</td>
+            <td class="right">${fmtMoney(r.spend)}</td>
+            <td class="right">${deltaHtml(spendD.pct, false)}</td>
+            <td class="right">${fmt(r.imp)}</td>
+            <td class="right">${deltaHtml(impD.pct, false)}</td>
+            <td class="right">${fmt(r.signups)}</td>
+            <td class="right">${deltaHtml(suD.pct, false)}</td>
+            <td class="right">${r.signups > 0 ? fmtMoney(cps) : '—'}</td>
+            <td class="right">${i > 0 && r.signups > 0 && prevCps > 0 ? deltaHtml(cpsD.pct, true) : ''}</td>
+            <td class="right">${fmt(ac)}</td>
+            <td class="right">${ac > 0 ? fmtMoney(cpac) : '—'}</td>
+            <td class="right">${i > 0 && ac > 0 && prevCpac > 0 ? deltaHtml(cpacD.pct, true) : ''}</td>
+            <td class="right">${fmt(r.payers)}</td>
+            <td class="right">${r.payers > 0 ? fmtMoney(cac) : '—'}</td>
+            <td class="right">${r.spend > 0 ? fmtRoas(roas) : '—'}</td>
+            <td class="right">${deltaHtml(roasD.pct, false)}</td>
+        </tr>`;
+    });
+    document.getElementById('table-body').innerHTML = html;
+}
+
+// ── Chart ──
+const METRICS = [
+    { id: 'spend',   label: 'Spend',          type: 'bar',  color: '#6366f1', fmt: v => '$' + (v/1000).toFixed(0) + 'K', valueFn: r => r.spend },
+    { id: 'imp',     label: 'Impressions',     type: 'bar',  color: '#38bdf8', fmt: v => (v/1000).toFixed(0) + 'K',       valueFn: r => r.imp },
+    { id: 'cpc',     label: 'Avg CPC',         type: 'line', color: '#f59e0b', fmt: v => '$' + v.toFixed(2),              valueFn: r => r.clicks > 0 ? r.spend / r.clicks : 0 },
+    { id: 'signups', label: 'Hard Signups',     type: 'bar',  color: '#4ade80', fmt: v => v.toFixed(0),                    valueFn: r => r.signups },
+    { id: 'cr',      label: 'CR to SU',        type: 'line', color: '#a78bfa', fmt: v => (v*100).toFixed(1) + '%',        valueFn: r => r.clicks > 0 ? r.signups / r.clicks : 0 },
+    { id: 'cps',     label: 'CPS Hard Signup', type: 'line', color: '#f87171', fmt: v => '$' + v.toFixed(0),              valueFn: r => r.signups > 0 ? r.spend / r.signups : 0 },
+    { id: 'payers',  label: 'Payers',          type: 'line', color: '#2dd4bf', fmt: v => v.toFixed(0),                    valueFn: r => r.payers },
+    { id: 'roas',    label: 'VBB ROAS',        type: 'line', color: '#fb923c', fmt: v => (v * 100).toFixed(0) + '%',       valueFn: r => r.spend > 0 ? r.vbb_value / r.spend : 0 },
+    { id: 'agents',  label: 'Agents Created',  type: 'bar',  color: '#e879f9', fmt: v => v.toFixed(0),                    valueFn: r => r.agents_created || 0 },
+];
+const activeMetrics = new Set(['spend', 'cps']);
+let chartInstance = null;
+
+const toggleContainer = document.getElementById('chart-toggles');
+METRICS.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'chart-toggle' + (activeMetrics.has(m.id) ? ' active' : '');
+    btn.dataset.id = m.id;
+    btn.innerHTML = `<span class="dot" style="background:${m.color}"></span>${m.label}`;
+    btn.addEventListener('click', () => {
+        if (activeMetrics.has(m.id)) { activeMetrics.delete(m.id); btn.classList.remove('active'); }
+        else { activeMetrics.add(m.id); btn.classList.add('active'); }
+        renderChart(document.getElementById('geo-select').value);
+    });
+    toggleContainer.appendChild(btn);
+});
+
+function renderChart(geo) {
+    const rows = getFilteredRows(geo);
+    if (!rows.length) { if (chartInstance) chartInstance.destroy(); return; }
+    const labels = rows.map(r => weekLabel(r.week));
+    const active = METRICS.filter(m => activeMetrics.has(m.id));
+    const barMetrics = active.filter(m => m.type === 'bar');
+    const datasets = [];
+    const scales = { x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#999', font: { size: 11 } } } };
+    active.forEach((m, idx) => {
+        const axisId = 'y_' + m.id;
+        const data = rows.map(r => m.valueFn(r));
+        const isBar = m.type === 'bar';
+        datasets.push({
+            label: m.label, data, type: m.type, yAxisID: axisId,
+            backgroundColor: isBar ? m.color + '99' : 'transparent', borderColor: m.color,
+            borderWidth: isBar ? 0 : 2.5, pointRadius: 3, pointBackgroundColor: m.color,
+            tension: 0.3, order: isBar ? 2 : 1,
+            barPercentage: barMetrics.length > 1 ? 0.5 : 0.6,
+            categoryPercentage: barMetrics.length > 1 ? 0.8 : 0.7,
+        });
+        scales[axisId] = {
+            type: 'linear', position: isBar ? 'left' : 'right',
+            display: active.length <= 3, grid: { display: idx === 0, color: 'rgba(255,255,255,0.04)' },
+            ticks: { color: m.color, font: { size: 10 }, callback: v => m.fmt(v), maxTicksLimit: 5 },
+            beginAtZero: true,
+        };
+    });
+    if (chartInstance) chartInstance.destroy();
+    const ctx = document.getElementById('chart-canvas').getContext('2d');
+    chartInstance = new Chart(ctx, {
+        type: 'bar', data: { labels, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1a1a1a', borderColor: '#333', borderWidth: 1,
+                    titleColor: '#e8e8e8', bodyColor: '#ccc', padding: 10,
+                    callbacks: { label: ctx => { const m = METRICS.find(x => x.label === ctx.dataset.label); return ctx.dataset.label + ': ' + (m ? m.fmt(ctx.raw) : ctx.raw); } }
+                }
+            },
+            scales,
+        }
+    });
+    document.getElementById('chart-canvas').parentElement.style.height = '320px';
+    document.getElementById('chart-canvas').style.height = '320px';
+}
+
+// ── Geo dropdown ──
+const select = document.getElementById('geo-select');
+function rebuildGeoDropdown() {
+    const prev = select.value;
+    select.innerHTML = '';
+    const keys = Object.keys(currentData).sort((a, b) => {
+        if (a === 'All EMEA') return -1;
+        if (b === 'All EMEA') return 1;
+        return a.localeCompare(b);
+    });
+    keys.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k; opt.textContent = k;
+        if (k === 'All EMEA') opt.selected = true;
+        select.appendChild(opt);
+    });
+    // Try to keep previous selection
+    if (prev && keys.includes(prev)) select.value = prev;
+    else if (keys.includes('All EMEA')) select.value = 'All EMEA';
+    else if (keys.length) select.value = keys[0];
+}
+
+select.addEventListener('change', () => { render(select.value); renderChart(select.value); });
+
+// ── Brand toggle ──
+document.querySelectorAll('.brand-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.brand-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentBrandKey = btn.dataset.type;
+        currentData = currentBrandKey === 'brand' ? DATA_BRAND : DATA_NONBRAND;
+        rebuildGeoDropdown();
+        render(select.value);
+        renderChart(select.value);
+        rebuildCompGeos();
+        renderComparison();
+    });
+});
+
+// ── Date filter defaults ──
+function initDateFilters() {
+    const allWeeks = [...new Set(Object.values(currentData).flatMap(rows => rows.map(r => r.week)))].sort();
+    if (allWeeks.length > 6) document.getElementById('date-from').value = allWeeks[allWeeks.length - 6];
+    else if (allWeeks.length > 0) document.getElementById('date-from').value = allWeeks[0];
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    document.getElementById('date-to').value = yesterday.toISOString().slice(0, 10);
+}
+
+document.getElementById('date-from').addEventListener('change', () => { render(select.value); renderChart(select.value); });
+document.getElementById('date-to').addEventListener('change', () => { render(select.value); renderChart(select.value); });
+
+// ══════════════════════════════════════════
+// Geo Comparison — fully independent
+// ══════════════════════════════════════════
+
+const COMP_EXCLUDE = new Set(['All EMEA']);
+const COMP_DEFAULTS = new Set(['Australia', 'India', 'Japan', 'South Korea', 'Singapore', 'Indonesia']);
+
+// Region quick-selects
+const REGION_DACH = new Set(['Germany', 'Austria', 'Switzerland', 'DACH']);
+const REGION_NORDICS = new Set(['Sweden', 'Norway', 'Denmark', 'Finland', 'Iceland', 'Nordics']);
+const REGION_CEE = new Set(['Poland', 'Czech Republic', 'Hungary', 'Romania', 'Bulgaria', 'Slovakia', 'Croatia', 'Slovenia', 'Serbia', 'Estonia', 'Latvia', 'Lithuania', 'Ukraine', 'CEE']);
+const REGION_MENA = new Set(['United Arab Emirates', 'Saudi Arabia', 'Israel', 'Egypt', 'Morocco', 'Turkey', 'Qatar', 'Kuwait', 'Bahrain', 'Oman', 'Jordan', 'Lebanon', 'Iraq', 'Tunisia', 'Algeria', 'Libya', 'MENA']);
+const REGION_SOUTHERN = new Set(['Spain', 'Portugal', 'Italy', 'Greece', 'Malta', 'Cyprus', 'Southern Europe']);
+const REGION_UK = new Set(['United Kingdom', 'Ireland', 'UK & Ireland']);
+const REGION_AFRICA = new Set(['South Africa', 'Nigeria', 'Kenya', 'Ghana', 'Tanzania', 'Uganda', 'Ethiopia', 'Rwanda', 'Sub-Saharan Africa']);
+
+let compGeos = [];
+const compActiveGeos = new Set(COMP_DEFAULTS);
+let compSortKey = 'spend';
+let compSortDesc = true;
+
+// Comp date defaults
+const compToday = new Date();
+const compCutoff = new Date(compToday);
+compCutoff.setDate(compCutoff.getDate() - 5);
+const compCutoffDay = compCutoff.getDay();
+const compDaysToFri = (compCutoffDay + 2) % 7;
+const compEndFri = new Date(compCutoff);
+compEndFri.setDate(compEndFri.getDate() - compDaysToFri);
+const compStartFri = new Date(compEndFri);
+compStartFri.setDate(compStartFri.getDate() - 14);
+
+const compDateFromEl = document.getElementById('comp-date-from');
+const compDateToEl = document.getElementById('comp-date-to');
+compDateFromEl.value = compStartFri.toISOString().slice(0, 10);
+compDateToEl.value = compCutoff.toISOString().slice(0, 10);
+
+compDateFromEl.addEventListener('change', () => renderComparison());
+compDateToEl.addEventListener('change', () => renderComparison());
+
+// Sort
+document.getElementById('comp-thead-row').addEventListener('click', (e) => {
+    const th = e.target.closest('th.sortable');
+    if (!th) return;
+    const key = th.dataset.sort;
+    if (compSortKey === key) compSortDesc = !compSortDesc;
+    else { compSortKey = key; compSortDesc = true; }
+    document.querySelectorAll('#comp-thead-row th.sortable').forEach(h => {
+        h.classList.remove('sort-active');
+        const arrow = h.querySelector('.sort-arrow'); if (arrow) arrow.remove();
+    });
+    th.classList.add('sort-active');
+    th.insertAdjacentHTML('beforeend', `<span class="sort-arrow">${compSortDesc ? '\u25BC' : '\u25B2'}</span>`);
+    renderComparison();
+});
+
+const ccContainer = document.getElementById('comp-geos');
+function rebuildCompGeos() {
+    ccContainer.innerHTML = '';
+    compGeos = Object.keys(currentData).filter(k => !COMP_EXCLUDE.has(k)).sort();
+    compGeos.forEach(c => {
+        const pill = document.createElement('button');
+        pill.className = 'cc-pill' + (compActiveGeos.has(c) ? ' active' : '');
+        pill.textContent = c;
+        pill.dataset.cluster = c;
+        pill.addEventListener('click', () => {
+            if (compActiveGeos.has(c)) { compActiveGeos.delete(c); pill.classList.remove('active'); }
+            else { compActiveGeos.add(c); pill.classList.add('active'); }
+            renderComparison();
+        });
+        ccContainer.appendChild(pill);
+    });
+}
+
+document.getElementById('comp-select-all').addEventListener('click', () => {
+    compGeos.forEach(c => compActiveGeos.add(c));
+    ccContainer.querySelectorAll('.cc-pill').forEach(p => p.classList.add('active'));
+    renderComparison();
+});
+document.getElementById('comp-select-none').addEventListener('click', () => {
+    compActiveGeos.clear();
+    ccContainer.querySelectorAll('.cc-pill').forEach(p => p.classList.remove('active'));
+    renderComparison();
+});
+
+function applyQuickSelect(preset) {
+    compActiveGeos.clear();
+    preset.forEach(c => { if (compGeos.includes(c)) compActiveGeos.add(c); });
+    ccContainer.querySelectorAll('.cc-pill').forEach(p => {
+        p.classList.toggle('active', compActiveGeos.has(p.dataset.cluster));
+    });
+    renderComparison();
+}
+
+document.getElementById('comp-select-dach').addEventListener('click', () => applyQuickSelect(REGION_DACH));
+document.getElementById('comp-select-nordics').addEventListener('click', () => applyQuickSelect(REGION_NORDICS));
+document.getElementById('comp-select-cee').addEventListener('click', () => applyQuickSelect(REGION_CEE));
+document.getElementById('comp-select-mena').addEventListener('click', () => applyQuickSelect(REGION_MENA));
+document.getElementById('comp-select-southern').addEventListener('click', () => applyQuickSelect(REGION_SOUTHERN));
+document.getElementById('comp-select-uk').addEventListener('click', () => applyQuickSelect(REGION_UK));
+document.getElementById('comp-select-africa').addEventListener('click', () => applyQuickSelect(REGION_AFRICA));
+
+function getCompWeeks() {
+    const from = compDateFromEl.value;
+    const to = compDateToEl.value;
+    const allWeeks = [...new Set(Object.values(currentData).flatMap(rows => rows.map(r => r.week)))].sort();
+    return allWeeks.filter(w => w >= from && w <= to);
+}
+
+function aggregateGeo(geo, weeks) {
+    const weekSet = new Set(weeks);
+    const rows = (currentData[geo] || []).filter(r => weekSet.has(r.week));
+    const agg = { spend: 0, imp: 0, clicks: 0, signups: 0, payers: 0, vbb_value: 0, agents_created: 0 };
+    rows.forEach(r => {
+        agg.spend += r.spend; agg.imp += r.imp; agg.clicks += r.clicks;
+        agg.signups += r.signups; agg.payers += r.payers; agg.vbb_value += r.vbb_value;
+        agg.agents_created += (r.agents_created || 0);
+    });
+    return agg;
+}
+
+function renderComparison() {
+    const weeks = getCompWeeks();
+    let geos = compGeos.filter(c => compActiveGeos.has(c));
+    if (!geos.length) {
+        document.getElementById('comp-table-body').innerHTML = '<tr><td colspan="12" style="text-align:center;color:#666;padding:24px">Select at least one geo</td></tr>';
+        return;
+    }
+    const sortValFn = (c) => {
+        const a = aggregateGeo(c, weeks);
+        switch (compSortKey) {
+            case 'spend': return a.spend; case 'imp': return a.imp;
+            case 'cpc': return a.clicks > 0 ? a.spend / a.clicks : 0;
+            case 'signups': return a.signups;
+            case 'cr': return a.clicks > 0 ? a.signups / a.clicks : 0;
+            case 'cps': return a.signups > 0 ? a.spend / a.signups : 0;
+            case 'payers': return a.payers;
+            case 'agents_created': return a.agents_created;
+            case 'cpac': return a.agents_created > 0 ? a.spend / a.agents_created : 0;
+            case 'cac': return a.payers > 0 ? a.spend / a.payers : 0;
+            case 'roas': return a.spend > 0 ? a.vbb_value / a.spend : 0;
+            default: return a.spend;
+        }
+    };
+    geos.sort((a, b) => compSortDesc ? sortValFn(b) - sortValFn(a) : sortValFn(a) - sortValFn(b));
+
+    let html = '';
+    geos.forEach((c, i) => {
+        const a = aggregateGeo(c, weeks);
+        const cpc = a.clicks > 0 ? a.spend / a.clicks : 0;
+        const cr = a.clicks > 0 ? (a.signups / a.clicks) * 100 : 0;
+        const cps = a.signups > 0 ? a.spend / a.signups : 0;
+        const cpac = a.agents_created > 0 ? a.spend / a.agents_created : 0;
+        const cac = a.payers > 0 ? a.spend / a.payers : 0;
+        const roas = a.spend > 0 ? (a.vbb_value / a.spend) * 100 : 0;
+        html += `<tr class="${i % 2 ? 'tr-alt' : ''}">
+            <td class="cluster-name">${c}</td>
+            <td class="right">${fmtMoney(a.spend)}</td>
+            <td class="right">${fmt(a.imp)}</td>
+            <td class="right">$${cpc.toFixed(2)}</td>
+            <td class="right">${fmt(a.signups)}</td>
+            <td class="right">${cr.toFixed(1)}%</td>
+            <td class="right">$${cps.toFixed(0)}</td>
+            <td class="right">${fmt(a.agents_created)}</td>
+            <td class="right">${a.agents_created > 0 ? fmtMoney(cpac) : '—'}</td>
+            <td class="right">${a.payers.toFixed(0)}</td>
+            <td class="right">${a.payers > 0 ? fmtMoney(cac) : '—'}</td>
+            <td class="right">${roas.toFixed(0)}%</td>
+        </tr>`;
+    });
+    // Totals
+    const totals = { spend: 0, imp: 0, clicks: 0, signups: 0, payers: 0, vbb_value: 0, agents_created: 0 };
+    geos.forEach(c => { const a = aggregateGeo(c, weeks); for (const k in totals) totals[k] += a[k]; });
+    const tCpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
+    const tCr = totals.clicks > 0 ? (totals.signups / totals.clicks) * 100 : 0;
+    const tCps = totals.signups > 0 ? totals.spend / totals.signups : 0;
+    const tCpac = totals.agents_created > 0 ? totals.spend / totals.agents_created : 0;
+    const tCac = totals.payers > 0 ? totals.spend / totals.payers : 0;
+    const tRoas = totals.spend > 0 ? (totals.vbb_value / totals.spend) * 100 : 0;
+    html += `<tr style="border-top:2px solid var(--border);font-weight:600">
+        <td class="cluster-name">Total</td>
+        <td class="right">${fmtMoney(totals.spend)}</td>
+        <td class="right">${fmt(totals.imp)}</td>
+        <td class="right">$${tCpc.toFixed(2)}</td>
+        <td class="right">${fmt(totals.signups)}</td>
+        <td class="right">${tCr.toFixed(1)}%</td>
+        <td class="right">$${tCps.toFixed(0)}</td>
+        <td class="right">${fmt(totals.agents_created)}</td>
+        <td class="right">${totals.agents_created > 0 ? fmtMoney(tCpac) : '—'}</td>
+        <td class="right">${totals.payers.toFixed(0)}</td>
+        <td class="right">${totals.payers > 0 ? fmtMoney(tCac) : '—'}</td>
+        <td class="right">${tRoas.toFixed(0)}%</td>
+    </tr>`;
+    document.getElementById('comp-table-body').innerHTML = html;
+}
+
+// ── Init ──
+rebuildGeoDropdown();
+initDateFilters();
+render(select.value);
+renderChart(select.value);
+rebuildCompGeos();
+renderComparison();
+</script>
+</body>
+</html>
