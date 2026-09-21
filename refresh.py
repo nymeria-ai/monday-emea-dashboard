@@ -395,22 +395,47 @@ def main():
     data = pull_data()
     data = compute_aggregates(data)
 
-    # Summary: exclude aggregate geos (All EMEA + geo groups) to avoid double-counting
+    # Summary: deterministic, fail-closed.
+    # Sum country-level rows ONLY. Cross-check against "All EMEA" aggregate.
     aggregate_geos = {"All EMEA"} | set(GEO_GROUPS.keys())
+    integrity_ok = True
+    summary_totals = {}  # brand_key -> country_total_spend
+
     for brand_key in ("brand", "nonbrand"):
         geo_data = data[brand_key]
+        country_count = sum(1 for name in geo_data if name not in aggregate_geos)
         country_total = sum(
             sum(w["spend"] for w in weeks.values())
             for name, weeks in geo_data.items()
             if name not in aggregate_geos
         )
-        print(f"\n📊 {brand_key.upper()}: {len(geo_data)} geos, ${country_total:,.0f} total spend (countries only)")
+        summary_totals[brand_key] = country_total
+
+        # Cross-check: country sum should be ≤ "All EMEA" aggregate (which IS the country sum).
+        # If country_total > All EMEA by more than $1 (rounding), something is double-counted.
+        all_emea_total = sum(w["spend"] for w in geo_data.get("All EMEA", {}).values())
+        delta = country_total - all_emea_total
+        if abs(delta) > 1.0:
+            print(f"\n🚨 INTEGRITY CHECK FAILED for {brand_key.upper()}:")
+            print(f"   Country sum: ${country_total:,.2f}")
+            print(f"   All EMEA aggregate: ${all_emea_total:,.2f}")
+            print(f"   Delta: ${delta:,.2f} (≤$1.00 tolerance)")
+            integrity_ok = False
+        else:
+            print(f"\n✅ {brand_key.upper()}: integrity OK (country sum ${country_total:,.0f} ≈ All EMEA ${all_emea_total:,.0f})")
+
+        print(f"📊 {brand_key.upper()}: {country_count} countries, ${country_total:,.0f} total spend")
         for name in sorted(geo_data.keys()):
             weeks = geo_data[name]
             total_spend = sum(w["spend"] for w in weeks.values())
             if total_spend > 0:
                 marker = " [aggregate]" if name in aggregate_geos else ""
                 print(f"  {name}: {len(weeks)} weeks, ${total_spend:,.0f} total spend{marker}")
+
+    if not integrity_ok:
+        print("\n🛑 ABORTING — integrity check failed. Dashboard NOT updated.")
+        print("Fix the data before publishing. Do not deploy a dashboard with mismatched totals.")
+        sys.exit(1)
 
     brand_json, nonbrand_json = format_data_for_html(data)
     update_html(brand_json, nonbrand_json)
