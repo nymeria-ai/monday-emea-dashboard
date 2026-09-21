@@ -395,14 +395,22 @@ def main():
     data = pull_data()
     data = compute_aggregates(data)
 
+    # Summary: exclude aggregate geos (All EMEA + geo groups) to avoid double-counting
+    aggregate_geos = {"All EMEA"} | set(GEO_GROUPS.keys())
     for brand_key in ("brand", "nonbrand"):
         geo_data = data[brand_key]
-        print(f"\n📊 {brand_key.upper()}: {len(geo_data)} geos")
+        country_total = sum(
+            sum(w["spend"] for w in weeks.values())
+            for name, weeks in geo_data.items()
+            if name not in aggregate_geos
+        )
+        print(f"\n📊 {brand_key.upper()}: {len(geo_data)} geos, ${country_total:,.0f} total spend (countries only)")
         for name in sorted(geo_data.keys()):
             weeks = geo_data[name]
             total_spend = sum(w["spend"] for w in weeks.values())
             if total_spend > 0:
-                print(f"  {name}: {len(weeks)} weeks, ${total_spend:,.0f} total spend")
+                marker = " [aggregate]" if name in aggregate_geos else ""
+                print(f"  {name}: {len(weeks)} weeks, ${total_spend:,.0f} total spend{marker}")
 
     brand_json, nonbrand_json = format_data_for_html(data)
     update_html(brand_json, nonbrand_json)
