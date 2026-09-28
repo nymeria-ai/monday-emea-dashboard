@@ -416,7 +416,34 @@ def main():
     print("=" * 50)
 
     data = pull_data()
+
+    # Coverage guard (step 1): snapshot every raw geo and its spend BEFORE any rollups exist.
+    raw_geos = {bk: {name: sum(w["spend"] for w in weeks.values())
+                     for name, weeks in data[bk].items()}
+                for bk in ("brand", "nonbrand")}
+
     data = compute_aggregates(data)
+
+    # Coverage guard (step 2): every raw geo must be counted as a country in the summary
+    # (i.e. not swallowed by a rollup name), and All EMEA must equal the raw total pulled.
+    coverage_ok = True
+    for bk in ("brand", "nonbrand"):
+        dropped = sorted(g for g in raw_geos[bk] if g in ROLLUP_GEOS)
+        if dropped:
+            print(f"\n🚨 COVERAGE CHECK FAILED for {bk.upper()}: raw geos shadowed by rollup names "
+                  f"and excluded from totals: {', '.join(f'{g} (${raw_geos[bk][g]:,.2f})' for g in dropped)}")
+            coverage_ok = False
+        raw_total = sum(raw_geos[bk].values())
+        all_emea = sum(w["spend"] for w in data[bk].get("All EMEA", {}).values())
+        if abs(raw_total - all_emea) > 1.0:
+            print(f"\n🚨 COVERAGE CHECK FAILED for {bk.upper()}: raw pulled ${raw_total:,.2f} "
+                  f"vs All EMEA ${all_emea:,.2f} (delta ${raw_total - all_emea:,.2f})")
+            coverage_ok = False
+        else:
+            print(f"✅ {bk.upper()}: coverage OK ({len(raw_geos[bk])} raw geos, ${raw_total:,.0f} = All EMEA)")
+    if not coverage_ok:
+        print("\n🛑 ABORTING — a geo in the raw data is missing from the totals. Dashboard NOT updated.")
+        sys.exit(1)
 
     # Summary: deterministic, fail-closed.
     # Sum country-level rows ONLY. Cross-check against "All EMEA" aggregate.
