@@ -19,6 +19,7 @@ and updates the DATA constants in index.html.
 ╚══════════════════════════════════════════════════════════════════╝
 """
 import json
+import os
 import subprocess
 import sys
 import re
@@ -40,6 +41,14 @@ ACCOUNTS = {
 }
 
 START_DATE = "2026-06-01"
+
+# Geo noise threshold: geos whose total spend over the window is below this are
+# left out of the dashboard JSON (their spend still counts in the rollups).
+# Override per run with env vars, e.g. MIN_GEO_SPEND_BRAND=100.
+MIN_GEO_SPEND = {
+    "brand": float(os.environ.get("MIN_GEO_SPEND_BRAND", "50")),
+    "nonbrand": float(os.environ.get("MIN_GEO_SPEND_NONBRAND", "0")),
+}
 
 # Conversion actions — LOCKED (same as WoW dashboard)
 CONV_ACTIONS = {
@@ -139,6 +148,11 @@ GEO_GROUPS = {
     "France": {"France"},
     "Russia": {"Russia"},
 }
+
+# Group names that are ONLY rollups. Single-country groups ("France", "Russia")
+# share their name with the country row, so they must NOT be skipped as aggregates,
+# or that country's spend silently drops out of All EMEA and the summary totals.
+ROLLUP_GEOS = {"All EMEA"} | {g for g, members in GEO_GROUPS.items() if g not in members}
 
 
 def is_brand_campaign(campaign_name: str, account_id: str) -> bool:
@@ -304,7 +318,7 @@ def compute_aggregates(data: dict) -> dict:
         for week in sorted(all_weeks):
             totals = {"spend": 0, "imp": 0, "clicks": 0, "signups": 0, "payers": 0, "vbb_value": 0, "agents_created": 0}
             for geo_name, weeks in geo_data.items():
-                if geo_name == "All EMEA" or geo_name in GEO_GROUPS:
+                if geo_name in ROLLUP_GEOS:
                     continue
                 if week in weeks:
                     for k in totals:
@@ -336,8 +350,15 @@ def format_data_for_html(data: dict) -> tuple[str, str]:
     results = {}
     for brand_key in ("brand", "nonbrand"):
         output = {}
+        threshold = MIN_GEO_SPEND[brand_key]
+        aggregates = ROLLUP_GEOS
+        hidden = []
         for geo_name in sorted(data[brand_key].keys()):
             weeks_data = data[brand_key][geo_name]
+            geo_spend = sum(w["spend"] for w in weeks_data.values())
+            if geo_name not in aggregates and geo_spend < threshold and threshold > 0:
+                hidden.append(f"{geo_name} (${geo_spend:,.2f})")
+                continue
             rows = []
             for week in sorted_weeks:
                 d = weeks_data.get(week, {"spend": 0, "imp": 0, "clicks": 0, "signups": 0, "payers": 0, "vbb_value": 0, "agents_created": 0})
@@ -352,6 +373,8 @@ def format_data_for_html(data: dict) -> tuple[str, str]:
                     "week": week,
                 })
             output[geo_name] = rows
+        if hidden:
+            print(f"  {brand_key.upper()}: hidden below ${threshold:,.0f} threshold: {', '.join(hidden)}")
         results[brand_key] = json.dumps(output, separators=(",", ":"))
 
     return results["brand"], results["nonbrand"]
@@ -397,13 +420,19 @@ def main():
 
     # Summary: deterministic, fail-closed.
     # Sum country-level rows ONLY. Cross-check against "All EMEA" aggregate.
-    aggregate_geos = {"All EMEA"} | set(GEO_GROUPS.keys())
+    aggregate_geos = ROLLUP_GEOS
     integrity_ok = True
     summary_totals = {}  # brand_key -> country_total_spend
 
     for brand_key in ("brand", "nonbrand"):
         geo_data = data[brand_key]
-        country_count = sum(1 for name in geo_data if name not in aggregate_geos)
+        thr = MIN_GEO_SPEND[brand_key]
+        country_spend = {name: sum(w["spend"] for w in weeks.values())
+                         for name, weeks in geo_data.items() if name not in aggregate_geos}
+        # Count what we list: countries with spend at/above the noise threshold.
+        country_count = sum(1 for v in country_spend.values() if v > 0 and v >= thr)
+        noise = [f"{n} (${v:,.2f})" for n, v in sorted(country_spend.items()) if 0 < v < thr]
+        zero = sorted(n for n, v in country_spend.items() if v <= 0)
         country_total = sum(
             sum(w["spend"] for w in weeks.values())
             for name, weeks in geo_data.items()
@@ -428,9 +457,13 @@ def main():
         for name in sorted(geo_data.keys()):
             weeks = geo_data[name]
             total_spend = sum(w["spend"] for w in weeks.values())
-            if total_spend > 0:
+            if total_spend > 0 and (name in aggregate_geos or total_spend >= thr):
                 marker = " [aggregate]" if name in aggregate_geos else ""
                 print(f"  {name}: {len(weeks)} weeks, ${total_spend:,.0f} total spend{marker}")
+        if zero:
+            print(f"  Zero spend (not listed): {', '.join(zero)}")
+        if noise:
+            print(f"  Below ${thr:,.0f} noise threshold (hidden from dashboard, still in All EMEA): {', '.join(noise)}")
 
     if not integrity_ok:
         print("\n🛑 ABORTING — integrity check failed. Dashboard NOT updated.")
